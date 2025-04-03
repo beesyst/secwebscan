@@ -1,0 +1,98 @@
+{
+  "database": {
+    "container_name": "secwebscan_postgres",
+    "POSTGRES_USER": "secscan",
+    "POSTGRES_PASSWORD": "securepass",
+    "POSTGRES_DB": "secwebscan",
+    "POSTGRES_PORT": 5432,
+    "POSTGRES_HOST": "secwebscan_postgres"
+  },
+  "docker_network": "secwebscan_network",
+  "scan_config": {
+    "report_formats": ["terminal", "html"],
+    "target": "berachainhub.org",
+    "open_report_after_scan": true,
+    "clear_reports_on_start": true
+  },
+  "plugins": [
+    {
+      "name": "nmap",
+      "category": "ports",
+      "install": ["apt-get update", "apt-get install -y nmap"],
+      "command": "nmap {args} {target} -oX /results/nmap.xml",
+      "output": "results/nmap.xml",
+      "parser": "xml",
+      "level": "custom",
+      "levels": {
+        "custom": {
+          "args": "-T4 -sT -Pn -n -p 22,25,80"
+        },
+        "easy": {
+          "args": "-T4 -F -sS -Pn"
+        },
+        "middle": {
+          "args": "-T4 -sS -sV -Pn --open"
+        },
+        "hard": {
+          "args": "-T4 -sS -sV -O -Pn --script dns-brute,firewalk,http-methods,whois-domain"
+        },
+        "extreme": {
+          "args": "-T4 -p- -sS -sV -O -A -Pn --script all"
+        },
+        "stealth": {
+          "args": "-T2 -sS -Pn --max-retries 1 --host-timeout 30s"
+        }
+      },
+      "enabled": true
+    },
+    {
+      "name": "amass",
+      "category": "discovery",
+      "command": "amass enum -d {target} -json /results/amass.json",
+      "output": "results/amass.json",
+      "enabled": false
+    },
+    {
+      "name": "subfinder",
+      "category": "discovery",
+      "command": "subfinder -d {target} -oJ /results/subfinder.json",
+      "output": "results/subfinder.json",
+      "enabled": false
+    },
+    {
+      "name": "httpx",
+      "category": "scanning",
+      "command": "httpx -l /data/targets.txt -json -o /results/httpx.json",
+      "output": "results/httpx.json",
+      "enabled": false
+    },
+    {
+      "name": "naabu",
+      "category": "ports",
+      "command": "naabu -host {target} -json -o /results/naabu.json",
+      "output": "results/naabu.json",
+      "enabled": false
+    },
+    {
+      "name": "ffuf",
+      "category": "fuzzing",
+      "command": "ffuf -u http://{target}/FUZZ -w /wordlists/common.txt -of json -o /results/ffuf.json",
+      "output": "results/ffuf.json",
+      "enabled": false
+    },
+    {
+      "name": "nuclei",
+      "category": "vulnerability",
+      "command": "nuclei -u http://{target} -json -o /results/nuclei.json",
+      "output": "results/nuclei.json",
+      "enabled": false
+    },
+    {
+      "name": "nikto",
+      "category": "vulnerability",
+      "command": "nikto -h http://{target} -o /results/nikto.json -Format json",
+      "output": "results/nikto.json",
+      "enabled": false
+    }
+  ]
+}

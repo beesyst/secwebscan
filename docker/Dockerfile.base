@@ -1,0 +1,25 @@
+FROM python:3.13.1-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl jq unzip git dnsutils xsltproc perl \
+    libnet-ssleay-perl libwhisker2-perl liblwp-useragent-determined-perl \
+    libglib2.0-0 libpango-1.0-0 libpangocairo-1.0-0 libcairo2 \
+    libgdk-pixbuf2.0-0 libharfbuzz0b libpangoft2-1.0-0 \
+    shared-mime-info fonts-liberation fonts-dejavu iputils-ping \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+
+COPY config/config.json /tmp/config.json
+COPY docker/install_plugins.py /tmp/install_plugins.py
+
+RUN python3 /tmp/install_plugins.py && \
+    chmod +x /tmp/tools_install.sh && \
+    bash /tmp/tools_install.sh
+
+COPY . /secwebscan
+WORKDIR /secwebscan

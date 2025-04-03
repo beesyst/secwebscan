@@ -1,0 +1,94 @@
+import json
+import subprocess
+import xml.etree.ElementTree as ET
+from datetime import datetime
+
+# Путь до конфигурации
+CONFIG_PATH = "/config/config.json"
+
+with open(CONFIG_PATH) as f:
+    CONFIG = json.load(f)
+
+TARGET = CONFIG["scan_config"]["target"]
+
+
+def scan_with_nmap():
+    output_path = "/results/nmap.xml"
+    cmd = f"nmap -oX {output_path} {TARGET}"
+    subprocess.run(cmd, shell=True)
+    return output_path
+
+
+def parse(xml_path):
+    results = []
+
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        host = root.find("host")
+        address = (
+            host.find("address").attrib.get("addr", "-") if host is not None else "-"
+        )
+        ports = host.find("ports") if host is not None else None
+
+        entries = []
+        if ports is not None:
+            for port in ports.findall("port"):
+                state_el = port.find("state")
+                service_el = port.find("service")
+
+                entry = {
+                    "port": int(port.attrib.get("portid", 0)),
+                    "protocol": port.attrib.get("protocol", ""),
+                    "state": (
+                        state_el.attrib.get("state", "") if state_el is not None else ""
+                    ),
+                    "reason": (
+                        state_el.attrib.get("reason", "-")
+                        if state_el is not None
+                        else "-"
+                    ),
+                    "service_name": (
+                        service_el.attrib.get("name", "")
+                        if service_el is not None
+                        else "-"
+                    ),
+                    "product": (
+                        service_el.attrib.get("product", "-")
+                        if service_el is not None
+                        else "-"
+                    ),
+                    "version": (
+                        service_el.attrib.get("version", "-")
+                        if service_el is not None
+                        else "-"
+                    ),
+                    "extra": (
+                        service_el.attrib.get("extrainfo", "-")
+                        if service_el is not None
+                        else "-"
+                    ),
+                }
+                entries.append(entry)
+
+        if entries:
+            results.append(
+                {
+                    "target": address,
+                    "type": "nmap",
+                    "severity": "info",
+                    "data": entries,
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            )
+
+    except Exception as e:
+        print(f"[!] Ошибка при парсинге XML: {e}")
+    # print(json.dumps(results, indent=2))
+    return results
+
+
+if __name__ == "__main__":
+    xml_file = scan_with_nmap()
+    parsed = parse(xml_file)
+    print(json.dumps(parsed, indent=2))

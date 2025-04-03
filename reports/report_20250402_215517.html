@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SecWebScan Report</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .module {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .module h2 {
+            color: #343a40;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            border: 1px solid #dee2e6;
+            text-align: left;
+        }
+
+        th {
+            background-color: #e9ecef;
+        }
+
+        .severity-high {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .severity-medium {
+            color: #fd7e14;
+            font-weight: bold;
+        }
+
+        .severity-low {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 60px;
+            font-size: 0.9em;
+            text-align: center;
+            color: #888;
+        }
+
+        pre {
+            background-color: #f1f3f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.9em;
+        }
+
+        .module td table {
+            width: 100%;
+            border: 1px solid #ccc;
+            margin-top: 5px;
+            border-collapse: collapse;
+        }
+
+        .module td table th {
+            background-color: #f8f9fa;
+            padding: 4px 6px;
+            font-size: 0.85em;
+        }
+
+        .module td table td {
+            padding: 4px 6px;
+            font-size: 0.85em;
+        }
+
+        .module td table th,
+        .module td table td {
+            border: 1px solid #ccc;
+        }
+
+        .module td table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>SecWebScan Report</h1>
+
+    
+    <div class="module">
+        <h2>NMAP</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Target</th>
+                    <th>Type</th>
+                    <th>Severity</th>
+                    <th>Details</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td>188.114.97.1</td>
+                    <td></td>
+                    <td>
+                        
+                        info
+                        
+                    </td>
+                    <td>
+                        
+                        <table>
+                            <thead>
+                                <tr>
+                                    
+                                    <th>Port</th>
+                                    
+                                    <th>Extra</th>
+                                    
+                                    <th>State</th>
+                                    
+                                    <th>Reason</th>
+                                    
+                                    <th>Product</th>
+                                    
+                                    <th>Version</th>
+                                    
+                                    <th>Protocol</th>
+                                    
+                                    <th>Service name</th>
+                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                                
+                                <tr>
+                                    
+                                    <td>22</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>filtered</td>
+                                    
+                                    <td>no-response</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>tcp</td>
+                                    
+                                    <td>ssh</td>
+                                    
+                                </tr>
+                                
+                                <tr>
+                                    
+                                    <td>25</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>filtered</td>
+                                    
+                                    <td>no-response</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>tcp</td>
+                                    
+                                    <td>smtp</td>
+                                    
+                                </tr>
+                                
+                                <tr>
+                                    
+                                    <td>80</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>open</td>
+                                    
+                                    <td>syn-ack</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>-</td>
+                                    
+                                    <td>tcp</td>
+                                    
+                                    <td>http</td>
+                                    
+                                </tr>
+                                
+                            </tbody>
+                        </table>
+                        
+                    </td>
+                    <td>2025-04-02 16:55:17</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+    
+
+    <div class="footer">
+        Generated by SecWebScan | 2025-04-02 16:55:19
+    </div>
+</body>
+
+</html>
