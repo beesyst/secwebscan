@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from collections import defaultdict
 from datetime import datetime
 
 import psycopg2
@@ -15,6 +16,8 @@ OUTPUT_DIR = os.path.join(ROOT_DIR, "reports")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 CONFIG_PATH = "/config/config.json"
+CATEGORY_KEYWORDS_PATH = os.path.join(ROOT_DIR, "config", "category_keywords.json")
+
 with open(CONFIG_PATH, "r") as f:
     CONFIG = json.load(f)
 
@@ -32,39 +35,65 @@ def connect_to_db():
     )
 
 
-def load_results_from_db():
-    results = {}
+def categorize_results(entries):
+    with open(CATEGORY_KEYWORDS_PATH, "r") as f:
+        category_map = json.load(f)
+
+    structured = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    meta_inserted = set()
+
+    for entry in entries:
+        target = entry["target"]
+        data_str = json.dumps(entry.get("data", {})).lower()
+
+        # Вставляем __meta__ один раз на target
+        if target not in meta_inserted:
+            structured[target]["__meta__"] = {
+                "created_at": entry.get("created_at", "Unknown"),
+                "mac": entry.get("mac", "-"),
+            }
+            meta_inserted.add(target)
+
+        # Определение категории
+        assigned = False
+        for category, keywords in category_map.items():
+            if any(keyword.lower() in data_str for keyword in keywords):
+                structured[target][category]["Ports"].append(entry)
+                assigned = True
+                break
+
+        if not assigned:
+            structured[target]["General Info"]["Ports"].append(entry)
+
+    return structured
+
+
+def load_and_categorize_results():
+    raw_entries = []
     conn = connect_to_db()
     cursor = conn.cursor()
 
     try:
         cursor.execute(
-            "SELECT target, result_type, severity, data, created_at FROM results ORDER BY created_at DESC"
+            "SELECT target, result_type, severity, data, created_at, module FROM results ORDER BY created_at DESC"
         )
         rows = cursor.fetchall()
 
         for row in rows:
-            target, result_type, severity, data, created_at = row
-
-            # print(f"[DEBUG] row: target={target}, type={result_type}, severity={severity}, created_at={created_at}, data={type(data)}")
-
-            if result_type not in results:
-                results[result_type] = []
-
-            # Убедись, что data — это всегда JSON-совместимая структура
+            target, result_type, severity, data, created_at, module = row
             if isinstance(data, str):
                 try:
                     data = json.loads(data)
                 except Exception:
-                    pass  # пусть остаётся строкой
-
-            results[result_type].append(
+                    pass
+            raw_entries.append(
                 {
                     "target": target,
-                    "type": result_type,
+                    "result_type": result_type,
                     "severity": severity,
                     "data": data,
                     "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "module": module,
                 }
             )
 
@@ -73,7 +102,8 @@ def load_results_from_db():
 
     cursor.close()
     conn.close()
-    return results
+
+    return categorize_results(raw_entries)
 
 
 def render_html(results, output_path):
@@ -86,7 +116,8 @@ def render_html(results, output_path):
         raise
 
     rendered = template.render(
-        results=results, generation_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        structured_results=results,
+        generation_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -99,42 +130,37 @@ def generate_pdf(html_path, pdf_path):
     print(f"✅ PDF-отчёт создан: {pdf_path}")
 
 
-def show_in_terminal(results: dict):
+def show_in_terminal(results):
     console = Console()
-
-    for module, entries in results.items():
-        table = Table(title=f"[bold blue]{module.upper()} Results")
-
-        table.add_column("Target")
-        table.add_column("Type")
-        table.add_column("Severity")
-        table.add_column("Created At")
-        table.add_column("Summary", overflow="fold")
-
-        for entry in entries:
-            data = entry.get("data")
-            if isinstance(data, list):
-                summary = ""
-                for item in data:
-                    if isinstance(item, dict):
-                        summary += f"{item.get('port', '?')}/{item.get('protocol', '?')} {item.get('state', '?')} | "
-                summary = summary.strip(" | ")
-            else:
-                summary = str(data)
-
-            table.add_row(
-                entry.get("target", "-"),
-                entry.get("type", "-"),
-                entry.get("severity", "-"),
-                entry.get("created_at", "-"),
-                summary[:120] + "..." if len(summary) > 120 else summary,
-            )
-
-        console.print(table)
+    for target, categories in results.items():
+        for category, sections in categories.items():
+            for subcat, entries in sections.items():
+                if subcat == "__meta__" or not isinstance(entries, list):
+                    continue
+                table = Table(title=f"[bold blue]{target} — {category} / {subcat}")
+                table.add_column("Severity")
+                table.add_column("Time")
+                table.add_column("Summary", overflow="fold")
+                for entry in entries:
+                    summary = ""
+                    data = entry.get("data")
+                    if isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict):
+                                summary += f"{item.get('port', '?')}/{item.get('protocol', '?')} {item.get('state', '?')} | "
+                        summary = summary.strip(" | ")
+                    else:
+                        summary = str(data)
+                    table.add_row(
+                        entry.get("severity", "-"),
+                        entry.get("created_at", "-"),
+                        summary,
+                    )
+                console.print(table)
 
 
 def main(format=None, timestamp=None):
-    results = load_results_from_db()
+    results = load_and_categorize_results()
     if not timestamp:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 

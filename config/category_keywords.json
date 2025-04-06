@@ -1,0 +1,82 @@
+{
+  "Network Security": [
+    "ftp anonymous",
+    "vnc accessible",
+    "rdp accessible",
+    "ldap server",
+    "pptp",
+    "rsync",
+    "ssh weak",
+    "port open",
+    "port",
+    "ssh",
+    "smtp",
+    "http",
+    "tcp",
+    "open",
+    "filtered",
+    "syn-ack",
+    "no-response"
+  ],
+  "Application Security": [
+    "missing x-frame-options",
+    "missing hsts",
+    "missing x-content-type-options",
+    "missing csp",
+    "http access allowed",
+    "self-signed certificate",
+    "ssl weak cipher",
+    "tls weak"
+  ],
+  "DNS Health": [
+    "missing spf",
+    "missing dmarc",
+    "missing dkim",
+    "spf softfail",
+    "recursive dns",
+    "cname in ns",
+    "invalid mx"
+  ],
+  "Vulnerability Scan": [
+    "cve",
+    "buffer overflow",
+    "directory traversal",
+    "sql injection",
+    "xss",
+    "remote code execution"
+  ],
+  "Web Catalog & Crawl": [
+    "cms detected",
+    "wp",
+    "joomla",
+    "drupal",
+    "directory found",
+    "endpoint",
+    "tech stack"
+  ],
+  "OSINT / Metadata": [
+    "whois",
+    "domain age",
+    "cert fingerprint",
+    "issuer",
+    "tls cert",
+    "metadata"
+  ],
+  "Database Security": [
+    "mysql open",
+    "mongo open",
+    "postgres",
+    "db leak",
+    "anonymous db",
+    "tbls",
+    "sql auth bypass"
+  ],
+  "Cloud & API Exposure": [
+    "aws key",
+    "gcp bucket",
+    "api key",
+    "secret key",
+    "exposed cloud"
+  ],
+  "General Info": []
+}

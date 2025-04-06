@@ -10,7 +10,7 @@
   "docker_network": "secwebscan_network",
   "scan_config": {
     "report_formats": ["terminal", "html"],
-    "target": "berachainhub.org",
+    "target": "95.217.132.169",
     "open_report_after_scan": true,
     "clear_reports_on_start": true
   },
@@ -22,10 +22,10 @@
       "command": "nmap {args} {target} -oX /results/nmap.xml",
       "output": "results/nmap.xml",
       "parser": "xml",
-      "level": "custom",
+      "level": "easy",
       "levels": {
         "custom": {
-          "args": "-T4 -sT -Pn -n -p 22,25,80"
+          "args": "-T4 -sT -Pn -n -p 22,25,80,443,996,8080,8443"
         },
         "easy": {
           "args": "-T4 -F -sS -Pn"
@@ -34,10 +34,10 @@
           "args": "-T4 -sS -sV -Pn --open"
         },
         "hard": {
-          "args": "-T4 -sS -sV -O -Pn --script dns-brute,firewalk,http-methods,whois-domain"
+          "args": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln\""
         },
         "extreme": {
-          "args": "-T4 -p- -sS -sV -O -A -Pn --script all"
+          "args": "-T4 -p- -sS -sV -O -Pn --script \"default,safe,vuln,discovery\" --max-retries 2 --host-timeout 5m"
         },
         "stealth": {
           "args": "-T2 -sS -Pn --max-retries 1 --host-timeout 30s"

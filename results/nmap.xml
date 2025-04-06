@@ -1,21 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE nmaprun>
 <?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
-<!-- Nmap 7.93 scan initiated Wed Apr  2 16:55:13 2025 as: nmap -T4 -sT -Pn -n -p 22,25,80 -oX /results/nmap.xml 188.114.97.1 -->
-<nmaprun scanner="nmap" args="nmap -T4 -sT -Pn -n -p 22,25,80 -oX /results/nmap.xml 188.114.97.1" start="1743612913" startstr="Wed Apr  2 16:55:13 2025" version="7.93" xmloutputversion="1.05">
-<scaninfo type="connect" protocol="tcp" numservices="3" services="22,25,80"/>
+<!-- Nmap 7.93 scan initiated Sun Apr  6 09:08:55 2025 as: nmap -T4 -F -sS -Pn -oX /results/nmap.xml 95.217.132.169 -->
+<nmaprun scanner="nmap" args="nmap -T4 -F -sS -Pn -oX /results/nmap.xml 95.217.132.169" start="1743930535" startstr="Sun Apr  6 09:08:55 2025" version="7.93" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="100" services="7,9,13,21-23,25-26,37,53,79-81,88,106,110-111,113,119,135,139,143-144,179,199,389,427,443-445,465,513-515,543-544,548,554,587,631,646,873,990,993,995,1025-1029,1110,1433,1720,1723,1755,1900,2000-2001,2049,2121,2717,3000,3128,3306,3389,3986,4899,5000,5009,5051,5060,5101,5190,5357,5432,5631,5666,5800,5900,6000-6001,6646,7070,8000,8008-8009,8080-8081,8443,8888,9100,9999-10000,32768,49152-49157"/>
 <verbose level="0"/>
 <debugging level="0"/>
-<host starttime="1743612913" endtime="1743612917"><status state="up" reason="user-set" reason_ttl="0"/>
-<address addr="188.114.97.1" addrtype="ipv4"/>
+<host starttime="1743930535" endtime="1743930537"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="95.217.132.169" addrtype="ipv4"/>
 <hostnames>
+<hostname name="static.169.132.217.95.clients.your-server.de" type="PTR"/>
 </hostnames>
-<ports><port protocol="tcp" portid="22"><state state="filtered" reason="no-response" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
-<port protocol="tcp" portid="25"><state state="filtered" reason="no-response" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
-<port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="http" method="table" conf="3"/></port>
+<ports><extraports state="filtered" count="83">
+<extrareasons reason="no-response" count="83" proto="tcp" ports="7,9,13,23,26,37,79,81,88,106,111,113,119,144,179,199,389,427,444,513-515,543-544,548,554,631,646,873,990,1025-1029,1110,1433,1720,1723,1755,1900,2000-2001,2049,2121,2717,3000,3128,3389,3986,4899,5000,5009,5051,5060,5101,5190,5357,5631,5666,5800,5900,6000-6001,6646,7070,8000,8008-8009,8080-8081,8443,8888,9100,9999-10000,32768,49152-49157"/>
+</extraports>
+<port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="53"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="domain" method="table" conf="3"/></port>
+<port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="http" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="135"><state state="closed" reason="reset" reason_ttl="61"/><service name="msrpc" method="table" conf="3"/></port>
+<port protocol="tcp" portid="139"><state state="closed" reason="reset" reason_ttl="61"/><service name="netbios-ssn" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="imap" method="table" conf="3"/></port>
+<port protocol="tcp" portid="443"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="https" method="table" conf="3"/></port>
+<port protocol="tcp" portid="445"><state state="closed" reason="reset" reason_ttl="61"/><service name="microsoft-ds" method="table" conf="3"/></port>
+<port protocol="tcp" portid="465"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="smtps" method="table" conf="3"/></port>
+<port protocol="tcp" portid="587"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="submission" method="table" conf="3"/></port>
+<port protocol="tcp" portid="993"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="imaps" method="table" conf="3"/></port>
+<port protocol="tcp" portid="995"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="pop3s" method="table" conf="3"/></port>
+<port protocol="tcp" portid="3306"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="mysql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="5432"><state state="closed" reason="reset" reason_ttl="42"/><service name="postgresql" method="table" conf="3"/></port>
 </ports>
-<times srtt="444952" rttvar="444952" to="1250000"/>
+<times srtt="63083" rttvar="18827" to="138391"/>
 </host>
-<runstats><finished time="1743612917" timestr="Wed Apr  2 16:55:17 2025" summary="Nmap done at Wed Apr  2 16:55:17 2025; 1 IP address (1 host up) scanned in 3.54 seconds" elapsed="3.54" exit="success"/><hosts up="1" down="0" total="1"/>
+<runstats><finished time="1743930537" timestr="Sun Apr  6 09:08:57 2025" summary="Nmap done at Sun Apr  6 09:08:57 2025; 1 IP address (1 host up) scanned in 2.34 seconds" elapsed="2.34" exit="success"/><hosts up="1" down="0" total="1"/>
 </runstats>
 </nmaprun>

@@ -119,7 +119,7 @@ def ensure_secwebscan_base_image():
     if not result.stdout.strip():
         print("📦 Образ secwebscan-base не найден. Собираем...")
         logging.info("Образ secwebscan-base не найден. Начинаем сборку...")
-        build_cmd = f"docker build -t secwebscan-base --build-arg USER_ID={os.getuid()} --build-arg GROUP_ID={os.getgid()} -f docker/Dockerfile.base ."
+        build_cmd = "docker build -t secwebscan-base -f docker/Dockerfile.base ."
         success = run_command(build_cmd, cwd=ROOT_DIR)
         if not success:
             logging.critical("Не удалось собрать образ secwebscan-base.")
@@ -166,10 +166,8 @@ def start_secwebscan_container():
         f"{os.path.join(ROOT_DIR, 'plugins')}:/plugins",
     ]
 
-    user_flags = f"--user {os.getuid()}:{os.getgid()}"
-
     run_command(
-        f"docker run -d --name secwebscan_base --network {NETWORK_NAME} {user_flags} "
+        f"docker run -d --name secwebscan_base --network {NETWORK_NAME} "
         + " ".join(volumes)
         + " secwebscan-base tail -f /dev/null",
         cwd=ROOT_DIR,
@@ -253,6 +251,23 @@ def generate_reports():
                 logging.warning(f"HTML-отчет не найден: {html_report_path}")
 
 
+def post_scan_chown():
+    try:
+        user_id = os.getuid()
+        group_id = os.getgid()
+        run_command(
+            f"docker exec secwebscan_base chown -R {user_id}:{group_id} /reports",
+            hide_output=False,
+        )
+        logging.info(
+            f"Права доступа к /reports обновлены внутри контейнера на {user_id}:{group_id}"
+        )
+        print(f"✅ Права на /reports обновлены: {user_id}:{group_id}")
+    except Exception as e:
+        logging.warning(f"Не удалось изменить владельца отчётов внутри контейнера: {e}")
+        print(f"⚠️ Ошибка при попытке сменить владельца отчётов: {e}")
+
+
 def main():
     check_docker_installed()
     clean_docker_environment()
@@ -262,6 +277,7 @@ def main():
     run_plugins()
     run_collector()
     generate_reports()
+    post_scan_chown()
     print("✅ SecWebScan завершил выполнение!")
     logging.info("SecWebScan завершил выполнение!")
 

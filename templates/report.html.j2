@@ -28,15 +28,18 @@
 
         .module h2 {
             color: #343a40;
-            border-bottom: 1px solid #dee2e6;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+        }
+
+        .module h3 {
+            color: #007bff;
+            margin-bottom: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-bottom: 20px;
         }
 
         th,
@@ -50,19 +53,34 @@
             background-color: #e9ecef;
         }
 
-        .severity-high {
-            color: #dc3545;
-            font-weight: bold;
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            border-bottom: 1px dotted #666;
         }
 
-        .severity-medium {
-            color: #fd7e14;
-            font-weight: bold;
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: max-content;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 5px 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8em;
         }
 
-        .severity-low {
-            color: #28a745;
-            font-weight: bold;
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
         }
 
         .footer {
@@ -81,97 +99,59 @@
             word-wrap: break-word;
             font-size: 0.9em;
         }
-
-        .module td table {
-            width: 100%;
-            border: 1px solid #ccc;
-            margin-top: 5px;
-            border-collapse: collapse;
-        }
-
-        .module td table th {
-            background-color: #f8f9fa;
-            padding: 4px 6px;
-            font-size: 0.85em;
-        }
-
-        .module td table td {
-            padding: 4px 6px;
-            font-size: 0.85em;
-        }
-
-        .module td table th,
-        .module td table td {
-            border: 1px solid #ccc;
-        }
-
-        .module td table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
     </style>
 </head>
 
 <body>
     <h1>SecWebScan Report</h1>
 
-    {% for module, entries in results.items() %}
+    {% for target, categories in structured_results.items() %}
     <div class="module">
-        <h2>{{ module|upper }}</h2>
+        <p><strong>Target:</strong> {{ target }}</p>
+        <p><strong>Other addresses:</strong>
+            {{ categories["__meta__"].mac if categories.get("__meta__") and categories["__meta__"].mac else "Unknown" }}
+        </p>
+        <p><strong>Time:</strong>
+            {{ categories["__meta__"].created_at if categories.get("__meta__") and categories["__meta__"].created_at
+            else "Unknown" }}
+        </p>
+
+        {% for category, subcats in categories.items() %}
+        {% if category != "__meta__" %}
+        <h2>{{ category }}</h2>
+
+        {% for subcategory, entries in subcats.items() %}
+        {% if entries and entries[0].data is iterable and entries[0].data is sequence and entries[0].data[0] is mapping
+        %}
+        <h3>{{ subcategory }}</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Target</th>
-                    <th>Type</th>
-                    <th>Severity</th>
-                    <th>Details</th>
-                    <th>Time</th>
+                    {% for key in entries[0].data[0].keys() %}
+                    <th>{{ key | replace('_', ' ') | capitalize }}</th>
+                    {% endfor %}
+                    <th>Source</th>
                 </tr>
             </thead>
             <tbody>
-                {% for entry in entries %}
+                {% for row in entries[0].data %}
                 <tr>
-                    <td>{{ entry.target }}</td>
-                    <td>{{ entry.result_type }}</td>
+                    {% for val in row.values() %}
+                    <td>{{ val if val else "-" }}</td>
+                    {% endfor %}
                     <td>
-                        {% if entry.severity == 'high' %}
-                        <span class="severity-high">High</span>
-                        {% elif entry.severity == 'medium' %}
-                        <span class="severity-medium">Medium</span>
-                        {% elif entry.severity == 'low' %}
-                        <span class="severity-low">Low</span>
-                        {% else %}
-                        {{ entry.severity or "N/A" }}
-                        {% endif %}
+                        <span class="tooltip">{{ entries[0].module }}
+                            <span class="tooltiptext">Источник: {{ entries[0].module }}</span>
+                        </span>
                     </td>
-                    <td>
-                        {% if entry.data is iterable and entry.data is sequence and entry.data[0] is mapping %}
-                        <table>
-                            <thead>
-                                <tr>
-                                    {% for col in entry.data[0].keys() %}
-                                    <th>{{ col | replace("_", " ") | capitalize }}</th>
-                                    {% endfor %}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in entry.data %}
-                                <tr>
-                                    {% for col in row.values() %}
-                                    <td>{{ col if col else "-" }}</td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        {% else %}
-                        <pre>{{ entry.data | tojson(indent=2) }}</pre>
-                        {% endif %}
-                    </td>
-                    <td>{{ entry.created_at }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        {% endfor %}
     </div>
     {% endfor %}
 

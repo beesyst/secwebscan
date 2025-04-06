@@ -40,10 +40,10 @@ async def install_plugin(plugin):
         return True
 
     if is_tool_installed(name):
-        logging.info(f"✅ {name} уже установлен. Пропускаем установку.")
+        logging.info(f"{name} уже установлен. Пропускаем установку.")
         return True
 
-    logging.info(f"📦 Установка зависимостей для {name}...")
+    logging.info(f"Установка зависимостей для {name}...")
 
     is_root = os.geteuid() == 0
 
@@ -61,11 +61,11 @@ async def install_plugin(plugin):
 
         if process.returncode != 0:
             logging.error(
-                f"❌ Установка {name} не удалась на команде: {cmd}\n{stderr.decode().strip()}"
+                f"Установка {name} не удалась на команде: {cmd}\n{stderr.decode().strip()}"
             )
             return False
 
-    logging.info(f"✅ {name} успешно установлен.")
+    logging.info(f"{name} успешно установлен.")
     return True
 
 
@@ -80,7 +80,7 @@ async def run_tool(plugin):
 
     # 🧹 Удаляем старый результат перед запуском, если нужно
     if plugin.get("parser") == "xml" and os.path.exists(output_path):
-        logging.info(f"🧹 Удаляем старый XML: {output_path}")
+        logging.info(f"Удаляем старый XML: {output_path}")
         os.remove(output_path)
 
     # Установка зависимостей
@@ -93,7 +93,7 @@ async def run_tool(plugin):
     level_args = plugin.get("levels", {}).get(level, {}).get("args", "")
     command = command_template.replace("{args}", level_args).replace("{target}", TARGET)
 
-    logging.info(f"🚀 Запуск {name} (уровень: {level}): {command}")
+    logging.info(f"Запуск {name} (уровень: {level}): {command}")
 
     try:
         process = await asyncio.create_subprocess_shell(
@@ -104,14 +104,14 @@ async def run_tool(plugin):
         stdout, stderr = await process.communicate()
 
         if process.returncode != 0:
-            logging.error(f"❌ {name} завершился с ошибкой: {stderr.decode().strip()}")
+            logging.error(f"{name} завершился с ошибкой: {stderr.decode().strip()}")
             return
 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         if plugin.get("parser") == "xml":
             logging.info(
-                f"🔄 {name} использует XML-вывод, результат уже сохранен в {output_path}"
+                f"{name} использует XML-вывод, результат уже сохранен в {output_path}"
             )
         else:
             try:
@@ -128,10 +128,10 @@ async def run_tool(plugin):
                 ]
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2)
-            logging.info(f"✅ {name} завершен. Результат сохранён в {output_path}")
+            logging.info(f"{name} завершен. Результат сохранён в {output_path}")
 
     except Exception as e:
-        logging.exception(f"💥 Ошибка запуска {name}: {e}")
+        logging.exception(f"Ошибка запуска {name}: {e}")
 
 
 async def main():
