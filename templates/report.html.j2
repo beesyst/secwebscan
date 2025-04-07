@@ -119,35 +119,66 @@
         {% for category, subcats in categories.items() %}
         {% if category != "__meta__" %}
         <h2>{{ category }}</h2>
-
         {% for subcategory, entries in subcats.items() %}
-        {% if entries and entries[0].data is iterable and entries[0].data is sequence and entries[0].data[0] is mapping
-        %}
+        {% if entries and entries[0]["data"] is iterable and entries[0]["data"] is not string and entries[0]["data"][0]
+        is
+        mapping %}
         <h3>{{ subcategory }}</h3>
+
+        {% if entries[0]["module"] == "nikto" %}
         <table>
             <thead>
                 <tr>
-                    {% for key in entries[0].data[0].keys() %}
-                    <th>{{ key | replace('_', ' ') | capitalize }}</th>
-                    {% endfor %}
+                    <th>URI</th>
+                    <th>Message</th>
+                    <th>Severity</th>
                     <th>Source</th>
                 </tr>
             </thead>
             <tbody>
-                {% for row in entries[0].data %}
+                {% for row in entries[0]["data"] %}
                 <tr>
-                    {% for val in row.values() %}
-                    <td>{{ val if val else "-" }}</td>
-                    {% endfor %}
+                    <td>{{ row.uri or "-" }}</td>
+                    <td>{{ row.message or "-" }}</td>
+                    <td>{{ row.severity or "info" }}</td>
                     <td>
-                        <span class="tooltip">{{ entries[0].module }}
-                            <span class="tooltiptext">Источник: {{ entries[0].module }}</span>
+                        <span class="tooltip">{{ entries[0]["module"] }}
+                            <span class="tooltiptext">Источник: {{ entries[0]["module"] }}</span>
                         </span>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <table>
+            <thead>
+                <tr>
+                    {% for key in entries[0]["data"][0].keys() %}
+                    <th>{{ key | replace('_', ' ') | capitalize }}</th>
+                    {% endfor %}
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in entries[0]["data"] %}
+                <tr>
+                    {% for val in row.values() %}
+                    <td>{{ val if val else "-" }}</td>
+                    {% endfor %}
+                    <td>
+                        <span class="tooltip">{{ entries[0]["module"] }}
+                            <span class="tooltiptext">Источник: {{ entries[0]["module"] }}</span>
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        {% else %}
+        <h3>{{ subcategory }}</h3>
+        <pre>{{ entries[0]["data"] }}</pre>
         {% endif %}
         {% endfor %}
         {% endif %}

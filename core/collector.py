@@ -2,7 +2,6 @@ import importlib.util
 import json
 import logging
 import os
-import re
 from datetime import datetime
 
 import psycopg2
@@ -23,16 +22,12 @@ logging.basicConfig(
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = "/config/config.json"
-CATEGORY_KEYWORDS_PATH = os.path.join(ROOT_DIR, "config", "category_keywords.json")
 
 with open(CONFIG_PATH, "r") as config_file:
     CONFIG = json.load(config_file)
 
 DB_CONFIG = CONFIG["database"]
 PLUGINS = CONFIG.get("plugins", [])
-
-with open(CATEGORY_KEYWORDS_PATH, "r") as f:
-    CATEGORY_KEYWORDS = json.load(f)
 
 
 def connect_to_db():
@@ -72,15 +67,6 @@ def load_plugin_parser(module_name):
     return plugin
 
 
-def detect_category(text):
-    text = text.lower()
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        for keyword in keywords:
-            if re.search(rf"\\b{re.escape(keyword)}\\b", text):
-                return category
-    return "General Info"
-
-
 def process_module_results(cursor, module):
     if not module.get("enabled", False):
         return 0
@@ -110,12 +96,14 @@ def process_module_results(cursor, module):
         try:
             timestamp = datetime.now()
             item["created_at"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            category_text = json.dumps(item.get("data", {}), ensure_ascii=False)
-            detected_category = detect_category(category_text)
+            item["module"] = module_name  # 👈 важно для Source в отчёте
+
+            # Категория берётся напрямую из config.json
+            detected_category = module.get("category", "General Info")
 
             cursor.execute(
                 f"""
-                INSERT INTO {table_name} (target, module, result_type, severity, data, created_at)
+                INSERT INTO {table_name} (target, module, category, severity, data, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
@@ -123,7 +111,7 @@ def process_module_results(cursor, module):
                     module_name,
                     detected_category,
                     item.get("severity", "info"),
-                    category_text,
+                    json.dumps(item.get("data", {}), ensure_ascii=False),
                     timestamp,
                 ),
             )

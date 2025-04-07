@@ -29,6 +29,10 @@ def parse(xml_path):
         address = (
             host.find("address").attrib.get("addr", "-") if host is not None else "-"
         )
+        hostname_el = host.find("hostnames/hostname")
+        hostname = (
+            hostname_el.attrib.get("name", "") if hostname_el is not None else "-"
+        )
         ports = host.find("ports") if host is not None else None
 
         entries = []
@@ -49,7 +53,7 @@ def parse(xml_path):
                         else "-"
                     ),
                     "service_name": (
-                        service_el.attrib.get("name", "")
+                        service_el.attrib.get("name", "-")
                         if service_el is not None
                         else "-"
                     ),
@@ -68,6 +72,15 @@ def parse(xml_path):
                         if service_el is not None
                         else "-"
                     ),
+                    "cpe": (
+                        service_el.findtext("cpe", default="-")
+                        if service_el is not None
+                        else "-"
+                    ),
+                    "script_output": "; ".join(
+                        [s.attrib.get("output", "") for s in port.findall("script")]
+                    )
+                    or "-",
                 }
                 entries.append(entry)
 
@@ -75,7 +88,7 @@ def parse(xml_path):
             results.append(
                 {
                     "target": address,
-                    "type": "nmap",
+                    "module": "nmap",
                     "severity": "info",
                     "data": entries,
                     "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -84,8 +97,16 @@ def parse(xml_path):
 
     except Exception as e:
         print(f"[!] Ошибка при парсинге XML: {e}")
-    # print(json.dumps(results, indent=2))
+
     return results
+
+
+def get_summary(data):
+    return " | ".join(
+        f"{d.get('port', '?')}/{d.get('protocol', '?')} {d.get('state', '?')}"
+        for d in data
+        if isinstance(d, dict)
+    )
 
 
 if __name__ == "__main__":

@@ -73,25 +73,30 @@ async def run_tool(plugin):
     name = plugin["name"]
     command_template = plugin["command"]
     output_path = os.path.join(ROOT_DIR, plugin["output"])
+    parser_type = plugin.get("parser", "json")  # 👈 Явно фиксируем
 
     if not plugin.get("enabled", False):
         logging.info(f"⏭ {name} отключен в конфиге. Пропускаем.")
         return
 
-    # 🧹 Удаляем старый результат перед запуском, если нужно
-    if plugin.get("parser") == "xml" and os.path.exists(output_path):
+    # 🧹 Удаляем старый файл, если XML
+    if parser_type == "xml" and os.path.exists(output_path):
         logging.info(f"Удаляем старый XML: {output_path}")
         os.remove(output_path)
 
-    # Установка зависимостей
+    # Установка тулзы
     success = await install_plugin(plugin)
     if not success:
         return
 
-    # Обработка уровня (если есть)
+    # Аргументы уровня
     level = plugin.get("level", "easy")
     level_args = plugin.get("levels", {}).get(level, {}).get("args", "")
     command = command_template.replace("{args}", level_args).replace("{target}", TARGET)
+
+    # Обработка {stdout}
+    if "{stdout}" in command:
+        command = command.replace("{stdout}", output_path)
 
     logging.info(f"Запуск {name} (уровень: {level}): {command}")
 
@@ -107,28 +112,28 @@ async def run_tool(plugin):
             logging.error(f"{name} завершился с ошибкой: {stderr.decode().strip()}")
             return
 
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        # ⛔ Не трогаем XML — он уже сохранён тулзой
+        if parser_type == "xml":
+            logging.info(f"{name} использует XML. Результат в {output_path}")
+            return
 
-        if plugin.get("parser") == "xml":
-            logging.info(
-                f"{name} использует XML-вывод, результат уже сохранен в {output_path}"
-            )
-        else:
-            try:
-                result = json.loads(stdout.decode())
-            except Exception:
-                result = [
-                    {
-                        "target": TARGET,
-                        "type": name,
-                        "severity": "info",
-                        "data": stdout.decode().strip(),
-                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-                ]
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
-            logging.info(f"{name} завершен. Результат сохранён в {output_path}")
+        # JSON: stdout → file
+        try:
+            result = json.loads(stdout.decode())
+        except Exception:
+            result = [
+                {
+                    "target": TARGET,
+                    "type": name,
+                    "severity": "info",
+                    "data": stdout.decode().strip(),
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            ]
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2)
+        logging.info(f"{name} завершен. JSON сохранён в {output_path}")
 
     except Exception as e:
         logging.exception(f"Ошибка запуска {name}: {e}")

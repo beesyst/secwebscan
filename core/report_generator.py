@@ -1,7 +1,8 @@
 import argparse
+import importlib.util
 import json
 import os
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from datetime import datetime
 
 import psycopg2
@@ -36,17 +37,18 @@ def connect_to_db():
 
 
 def categorize_results(entries):
-    with open(CATEGORY_KEYWORDS_PATH, "r") as f:
-        category_map = json.load(f)
+    plugin_categories = {
+        plugin["name"]: plugin.get("category", "General Info") for plugin in PLUGINS
+    }
 
     structured = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     meta_inserted = set()
 
     for entry in entries:
         target = entry["target"]
-        data_str = json.dumps(entry.get("data", {})).lower()
+        module = entry.get("module")
+        category = plugin_categories.get(module, "General Info")
 
-        # Вставляем __meta__ один раз на target
         if target not in meta_inserted:
             structured[target]["__meta__"] = {
                 "created_at": entry.get("created_at", "Unknown"),
@@ -54,18 +56,33 @@ def categorize_results(entries):
             }
             meta_inserted.add(target)
 
-        # Определение категории
-        assigned = False
-        for category, keywords in category_map.items():
-            if any(keyword.lower() in data_str for keyword in keywords):
-                structured[target][category]["Ports"].append(entry)
-                assigned = True
-                break
-
-        if not assigned:
-            structured[target]["General Info"]["Ports"].append(entry)
+        structured[target][category][module].append(entry)
 
     return structured
+
+
+def sort_categories(structured):
+    priority = {
+        "Network Security": 0,
+        "Application Security": 1,
+        "DNS Health": 2,
+        "General Info": 99,
+    }
+
+    sorted_targets = OrderedDict()
+    for target, categories in structured.items():
+        sorted_cats = OrderedDict()
+
+        # __meta__ всегда первым
+        if "__meta__" in categories:
+            sorted_cats["__meta__"] = categories["__meta__"]
+
+        other_cats = {k: v for k, v in categories.items() if k != "__meta__"}
+        for k in sorted(other_cats, key=lambda x: priority.get(x, 50)):
+            sorted_cats[k] = other_cats[k]
+
+        sorted_targets[target] = sorted_cats
+    return sorted_targets
 
 
 def load_and_categorize_results():
@@ -75,25 +92,47 @@ def load_and_categorize_results():
 
     try:
         cursor.execute(
-            "SELECT target, result_type, severity, data, created_at, module FROM results ORDER BY created_at DESC"
+            "SELECT target, category, severity, data, created_at, module FROM results ORDER BY created_at DESC"
         )
         rows = cursor.fetchall()
 
         for row in rows:
-            target, result_type, severity, data, created_at, module = row
+            target, category, severity, data, created_at, module = row
+
             if isinstance(data, str):
                 try:
                     data = json.loads(data)
                 except Exception:
                     pass
+
+            summary = ""
+            plugin_path = os.path.join("/plugins", f"{module}.py")
+            if os.path.exists(plugin_path):
+                try:
+                    import importlib.util
+
+                    spec = importlib.util.spec_from_file_location(module, plugin_path)
+                    plugin = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(plugin)
+
+                    if hasattr(plugin, "get_summary"):
+                        summary = plugin.get_summary(data)
+                    else:
+                        summary = str(data)[:80]
+                except Exception as e:
+                    summary = f"[Ошибка summary: {e}]"
+            else:
+                summary = str(data)[:80]
+
             raw_entries.append(
                 {
                     "target": target,
-                    "result_type": result_type,
+                    "category": category,
                     "severity": severity,
                     "data": data,
                     "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "module": module,
+                    "summary": summary,
                 }
             )
 
@@ -141,26 +180,41 @@ def show_in_terminal(results):
                 table.add_column("Severity")
                 table.add_column("Time")
                 table.add_column("Summary", overflow="fold")
+
                 for entry in entries:
-                    summary = ""
+                    module = entry.get("module")
                     data = entry.get("data")
-                    if isinstance(data, list):
-                        for item in data:
-                            if isinstance(item, dict):
-                                summary += f"{item.get('port', '?')}/{item.get('protocol', '?')} {item.get('state', '?')} | "
-                        summary = summary.strip(" | ")
+                    summary = ""
+
+                    # Загружаем плагин
+                    plugin_path = os.path.join("/plugins", f"{module}.py")
+                    if os.path.exists(plugin_path):
+                        spec = importlib.util.spec_from_file_location(
+                            module, plugin_path
+                        )
+                        plugin = importlib.util.module_from_spec(spec)
+                        try:
+                            spec.loader.exec_module(plugin)
+                            if hasattr(plugin, "get_summary"):
+                                summary = plugin.get_summary(data)
+                            else:
+                                summary = json.dumps(data)[:100]
+                        except Exception as e:
+                            summary = f"[Ошибка get_summary: {e}]"
                     else:
-                        summary = str(data)
+                        summary = str(data)[:100]
+
                     table.add_row(
                         entry.get("severity", "-"),
                         entry.get("created_at", "-"),
                         summary,
                     )
+
                 console.print(table)
 
 
 def main(format=None, timestamp=None):
-    results = load_and_categorize_results()
+    results = sort_categories(load_and_categorize_results())
     if not timestamp:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 

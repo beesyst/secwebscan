@@ -13,12 +13,12 @@ $$;
 DROP TABLE IF EXISTS results;
 DROP TABLE IF EXISTS nmap_results;
 
--- Общая таблица (если нужна)
+-- Общая таблица
 CREATE TABLE IF NOT EXISTS results (
     id SERIAL PRIMARY KEY,
     target TEXT NOT NULL,
     module TEXT NOT NULL,
-    result_type TEXT NOT NULL,
+    category TEXT NOT NULL,
     severity TEXT,
     data JSONB NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
@@ -43,4 +43,3 @@ CREATE TABLE IF NOT EXISTS nmap_results (
     data JSONB,
     created_at TIMESTAMP DEFAULT NOW()
 );
-

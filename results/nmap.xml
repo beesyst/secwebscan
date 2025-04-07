@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE nmaprun>
 <?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
-<!-- Nmap 7.93 scan initiated Sun Apr  6 09:08:55 2025 as: nmap -T4 -F -sS -Pn -oX /results/nmap.xml 95.217.132.169 -->
-<nmaprun scanner="nmap" args="nmap -T4 -F -sS -Pn -oX /results/nmap.xml 95.217.132.169" start="1743930535" startstr="Sun Apr  6 09:08:55 2025" version="7.93" xmloutputversion="1.05">
+<!-- Nmap 7.93 scan initiated Mon Apr  7 05:04:45 2025 as: nmap -T4 -F -sS -Pn -oX /results/nmap.xml 95.217.132.169 -->
+<nmaprun scanner="nmap" args="nmap -T4 -F -sS -Pn -oX /results/nmap.xml 95.217.132.169" start="1744002285" startstr="Mon Apr  7 05:04:45 2025" version="7.93" xmloutputversion="1.05">
 <scaninfo type="syn" protocol="tcp" numservices="100" services="7,9,13,21-23,25-26,37,53,79-81,88,106,110-111,113,119,135,139,143-144,179,199,389,427,443-445,465,513-515,543-544,548,554,587,631,646,873,990,993,995,1025-1029,1110,1433,1720,1723,1755,1900,2000-2001,2049,2121,2717,3000,3128,3306,3389,3986,4899,5000,5009,5051,5060,5101,5190,5357,5432,5631,5666,5800,5900,6000-6001,6646,7070,8000,8008-8009,8080-8081,8443,8888,9100,9999-10000,32768,49152-49157"/>
 <verbose level="0"/>
 <debugging level="0"/>
-<host starttime="1743930535" endtime="1743930537"><status state="up" reason="user-set" reason_ttl="0"/>
+<host starttime="1744002285" endtime="1744002287"><status state="up" reason="user-set" reason_ttl="0"/>
 <address addr="95.217.132.169" addrtype="ipv4"/>
 <hostnames>
 <hostname name="static.169.132.217.95.clients.your-server.de" type="PTR"/>
@@ -32,8 +32,8 @@
 <port protocol="tcp" portid="3306"><state state="open" reason="syn-ack" reason_ttl="42"/><service name="mysql" method="table" conf="3"/></port>
 <port protocol="tcp" portid="5432"><state state="closed" reason="reset" reason_ttl="42"/><service name="postgresql" method="table" conf="3"/></port>
 </ports>
-<times srtt="63083" rttvar="18827" to="138391"/>
+<times srtt="60385" rttvar="24511" to="158429"/>
 </host>
-<runstats><finished time="1743930537" timestr="Sun Apr  6 09:08:57 2025" summary="Nmap done at Sun Apr  6 09:08:57 2025; 1 IP address (1 host up) scanned in 2.34 seconds" elapsed="2.34" exit="success"/><hosts up="1" down="0" total="1"/>
+<runstats><finished time="1744002287" timestr="Mon Apr  7 05:04:47 2025" summary="Nmap done at Mon Apr  7 05:04:47 2025; 1 IP address (1 host up) scanned in 2.33 seconds" elapsed="2.33" exit="success"/><hosts up="1" down="0" total="1"/>
 </runstats>
 </nmaprun>
