@@ -1,15 +1,19 @@
 import argparse
 import importlib.util
 import json
+import logging
 import os
 from collections import OrderedDict, defaultdict
 from datetime import datetime
 
 import psycopg2
 from jinja2 import Environment, FileSystemLoader
+from logger_container import setup_container_logger
 from rich.console import Console
 from rich.table import Table
 from weasyprint import HTML
+
+setup_container_logger()
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = "/templates"
@@ -73,7 +77,6 @@ def sort_categories(structured):
     for target, categories in structured.items():
         sorted_cats = OrderedDict()
 
-        # __meta__ всегда первым
         if "__meta__" in categories:
             sorted_cats["__meta__"] = categories["__meta__"]
 
@@ -109,8 +112,6 @@ def load_and_categorize_results():
             plugin_path = os.path.join("/plugins", f"{module}.py")
             if os.path.exists(plugin_path):
                 try:
-                    import importlib.util
-
                     spec = importlib.util.spec_from_file_location(module, plugin_path)
                     plugin = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(plugin)
@@ -137,7 +138,7 @@ def load_and_categorize_results():
             )
 
     except Exception as e:
-        print(f"[!] Ошибка при загрузке из results: {e}")
+        logging.error(f"Ошибка при загрузке из results: {e}")
 
     cursor.close()
     conn.close()
@@ -146,12 +147,12 @@ def load_and_categorize_results():
 
 
 def render_html(results, output_path):
-    print("📂 Поиск шаблона в:", TEMPLATES_DIR)
+    logging.info(f"Поиск шаблона в: {TEMPLATES_DIR}")
     env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
     try:
         template = env.get_template("report.html.j2")
     except Exception as e:
-        print("❌ Ошибка загрузки шаблона:", e)
+        logging.error(f"Ошибка загрузки шаблона: {e}")
         raise
 
     rendered = template.render(
@@ -161,12 +162,13 @@ def render_html(results, output_path):
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(rendered)
-    print(f"✅ HTML-отчёт создан: {output_path}")
+
+    logging.info(f"HTML-отчет создан: {output_path}")
 
 
 def generate_pdf(html_path, pdf_path):
     HTML(html_path).write_pdf(pdf_path)
-    print(f"✅ PDF-отчёт создан: {pdf_path}")
+    logging.info(f"PDF-отчет создан: {pdf_path}")
 
 
 def show_in_terminal(results):
@@ -186,7 +188,6 @@ def show_in_terminal(results):
                     data = entry.get("data")
                     summary = ""
 
-                    # Загружаем плагин
                     plugin_path = os.path.join("/plugins", f"{module}.py")
                     if os.path.exists(plugin_path):
                         spec = importlib.util.spec_from_file_location(
@@ -218,6 +219,17 @@ def main(format=None, timestamp=None):
     if not timestamp:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    clear_reports = CONFIG.get("scan_config", {}).get("clear_reports", False)
+    if clear_reports:
+        logging.info("Очистка папки reports перед генерацией отчёта...")
+        for filename in os.listdir(OUTPUT_DIR):
+            file_path = os.path.join(OUTPUT_DIR, filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                logging.warning(f"Не удалось удалить файл {filename}: {e}")
+
     formats = CONFIG.get("scan_config", {}).get("report_formats", ["html"])
     if format:
         formats = [format]
@@ -226,21 +238,21 @@ def main(format=None, timestamp=None):
         show_in_terminal(results)
 
     if "html" in formats:
-        print("🔍 Проверка доступности шаблона...")
-        print("TEMPLATES_DIR =", TEMPLATES_DIR)
+        logging.info("Проверка доступности шаблона...")
+        logging.info(f"TEMPLATES_DIR = {TEMPLATES_DIR}")
 
         if not os.path.exists(TEMPLATES_DIR):
-            print("❌ Папка шаблонов не найдена!")
+            logging.error("Папка шаблонов не найдена!")
             return
 
         try:
             files = os.listdir(TEMPLATES_DIR)
-            print("📂 Файлы в шаблоне:", files)
+            logging.info(f"Файлы в шаблоне: {files}")
             if "report.html.j2" not in files:
-                print("❌ Файл report.html.j2 не найден в шаблонах!")
+                logging.error("Файл report.html.j2 не найден в шаблонах!")
                 return
         except Exception as e:
-            print("❌ Ошибка при чтении шаблонов:", e)
+            logging.error(f"Ошибка при чтении шаблонов: {e}")
             return
 
         html_output = os.path.join(OUTPUT_DIR, f"report_{timestamp}.html")

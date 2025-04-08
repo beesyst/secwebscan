@@ -11,12 +11,14 @@
   "scan_config": {
     "report_formats": ["terminal", "html"],
     "target": "95.217.132.169",
-    "open_report_after_scan": true,
-    "clear_reports_on_start": true
+    "open_report": true,
+    "clear_logs": true,
+    "clear_reports": true
   },
   "plugins": [
     {
       "name": "nmap",
+      "enabled": true,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
       "command": "nmap {args} {target} -oX {stdout}",
@@ -42,11 +44,11 @@
         "stealth": {
           "args": "-T2 -sS -Pn --max-retries 1 --host-timeout 30s"
         }
-      },
-      "enabled": true
+      }
     },
     {
       "name": "nikto",
+      "enabled": true,
       "category": "Application Security",
       "install": [
         "apt-get update",
@@ -63,22 +65,24 @@
       "level": "easy",
       "levels": {
         "custom": {
-          "args": "-Plugins tests"
+          "args": "-Tuning 2345 -Display V -Plugins tests"
         },
         "easy": {
-          "args": "-Tuning 2,4,5 -maxtime 60"
+          "args": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P"
         },
         "middle": {
-          "args": "-Tuning x"
+          "args": "-Tuning 12345 -Display V -nointeractive -followredirects"
         },
         "hard": {
-          "args": "-Tuning x -ssl"
+          "args": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ssl"
         },
         "extreme": {
-          "args": "-Tuning x -ssl -Display V"
+          "args": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ssl -Plugins ALL"
+        },
+        "stealth": {
+          "args": "-Tuning 2,4 -Display P -maxtime 30 -nointeractive -evasion 1,2,6"
         }
-      },
-      "enabled": true
+      }
     },
     {
       "name": "amass",

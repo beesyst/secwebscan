@@ -2,27 +2,26 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
 from datetime import datetime
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
+LOGS_PATH = os.path.join(ROOT_DIR, "logs", "host.log")
 
 with open(CONFIG_PATH, "r") as config_file:
     CONFIG = json.load(config_file)
 
+sys.path.insert(0, ROOT_DIR)
+from core.logger_container import clear_container_log_if_needed
+from core.logger_host import setup_host_logger
+
+setup_host_logger(CONFIG)
+clear_container_log_if_needed(CONFIG)
+
 DB_CONTAINER = CONFIG["database"]["container_name"]
 NETWORK_NAME = CONFIG["docker_network"]
-
-LOG_FILE = os.path.join(ROOT_DIR, "logs", "app.log")
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-
-logging.basicConfig(
-    filename=LOG_FILE,
-    filemode="w",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 
 
 def run_command(command, cwd=None, hide_output=True):
@@ -155,7 +154,7 @@ def start_secwebscan_container():
         "-v",
         f"{os.path.join(ROOT_DIR, 'results')}:/results",
         "-v",
-        f"{os.path.join(ROOT_DIR, 'logs')}:/logs",
+        f"{os.path.join(ROOT_DIR, 'logs', 'container.log')}:/logs/container.log",
         "-v",
         f"{os.path.join(ROOT_DIR, 'config')}:/config",
         "-v",
@@ -195,20 +194,7 @@ def generate_reports():
     logging.info("Генерация отчётов...")
 
     formats = CONFIG.get("scan_config", {}).get("report_formats", ["html"])
-    open_report = CONFIG.get("scan_config", {}).get("open_report_after_scan", False)
-    clear_reports = CONFIG.get("scan_config", {}).get("clear_reports_on_start", False)
-    reports_path = os.path.join(ROOT_DIR, "reports")
-
-    if clear_reports:
-        print("🧹 Очистка папки reports...")
-        logging.info("Очистка старых отчетов перед генерацией...")
-        for f in os.listdir(reports_path):
-            full_path = os.path.join(reports_path, f)
-            try:
-                if os.path.isfile(full_path):
-                    os.remove(full_path)
-            except Exception as e:
-                logging.warning(f"Не удалось удалить файл {f}: {e}")
+    open_report = CONFIG.get("scan_config", {}).get("open_report", False)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     html_report_name = f"report_{timestamp}.html"

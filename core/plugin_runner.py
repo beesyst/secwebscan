@@ -8,19 +8,13 @@ from datetime import datetime
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
-LOG_PATH = os.path.join(ROOT_DIR, "logs", "app.log")
-os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
-logging.basicConfig(
-    filename=LOG_PATH,
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from logger_container import setup_container_logger
 
-# Читаем конфиг
 with open(CONFIG_PATH, "r") as f:
     CONFIG = json.load(f)
+
+setup_container_logger()
 
 PLUGINS = CONFIG.get("plugins", [])
 target_raw = CONFIG.get("scan_config", {}).get("target", "127.0.0.1")
@@ -44,7 +38,6 @@ async def install_plugin(plugin):
         return True
 
     logging.info(f"Установка зависимостей для {name}...")
-
     is_root = os.geteuid() == 0
 
     for cmd in plugin["install"]:
@@ -58,7 +51,8 @@ async def install_plugin(plugin):
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
-
+        if stdout:
+            logging.debug(f"{name} STDOUT:\n{stdout.decode().strip()}")
         if process.returncode != 0:
             logging.error(
                 f"Установка {name} не удалась на команде: {cmd}\n{stderr.decode().strip()}"
@@ -73,28 +67,24 @@ async def run_tool(plugin):
     name = plugin["name"]
     command_template = plugin["command"]
     output_path = os.path.join(ROOT_DIR, plugin["output"])
-    parser_type = plugin.get("parser", "json")  # 👈 Явно фиксируем
+    parser_type = plugin.get("parser", "json")
 
     if not plugin.get("enabled", False):
         logging.info(f"⏭ {name} отключен в конфиге. Пропускаем.")
         return
 
-    # 🧹 Удаляем старый файл, если XML
     if parser_type == "xml" and os.path.exists(output_path):
         logging.info(f"Удаляем старый XML: {output_path}")
         os.remove(output_path)
 
-    # Установка тулзы
     success = await install_plugin(plugin)
     if not success:
         return
 
-    # Аргументы уровня
     level = plugin.get("level", "easy")
     level_args = plugin.get("levels", {}).get(level, {}).get("args", "")
     command = command_template.replace("{args}", level_args).replace("{target}", TARGET)
 
-    # Обработка {stdout}
     if "{stdout}" in command:
         command = command.replace("{stdout}", output_path)
 
@@ -112,12 +102,10 @@ async def run_tool(plugin):
             logging.error(f"{name} завершился с ошибкой: {stderr.decode().strip()}")
             return
 
-        # ⛔ Не трогаем XML — он уже сохранён тулзой
         if parser_type == "xml":
             logging.info(f"{name} использует XML. Результат в {output_path}")
             return
 
-        # JSON: stdout → file
         try:
             result = json.loads(stdout.decode())
         except Exception:
@@ -130,6 +118,7 @@ async def run_tool(plugin):
                     "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 }
             ]
+
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2)
@@ -142,6 +131,9 @@ async def run_tool(plugin):
 async def main():
     tasks = [run_tool(plugin) for plugin in PLUGINS if plugin.get("enabled")]
     await asyncio.gather(*tasks)
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
 
 
 if __name__ == "__main__":

@@ -5,26 +5,15 @@ import os
 from datetime import datetime
 
 import psycopg2
-
-# Настройка логирования
-LOG_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs"
-)
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_PATH = os.path.join(LOG_DIR, "app.log")
-
-logging.basicConfig(
-    filename=LOG_PATH,
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from logger_container import setup_container_logger
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = "/config/config.json"
 
 with open(CONFIG_PATH, "r") as config_file:
     CONFIG = json.load(config_file)
+
+setup_container_logger()
 
 DB_CONFIG = CONFIG["database"]
 PLUGINS = CONFIG.get("plugins", [])
@@ -96,9 +85,8 @@ def process_module_results(cursor, module):
         try:
             timestamp = datetime.now()
             item["created_at"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            item["module"] = module_name  # 👈 важно для Source в отчёте
+            item["module"] = module_name
 
-            # Категория берётся напрямую из config.json
             detected_category = module.get("category", "General Info")
 
             cursor.execute(

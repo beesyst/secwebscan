@@ -25,7 +25,6 @@ def parse(json_path):
         with open(json_path, "r") as f:
             raw = f.read()
 
-        # Никто может сохранить как строку или как JSON
         try:
             data = json.loads(raw)
             if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
@@ -40,7 +39,6 @@ def parse(json_path):
         parsed_entries = []
 
         for line in raw_output.splitlines():
-            # Ищем строки типа: + /robots.txt: сообщение
             match = re.match(r"^\+ (\/[^\s:]*):\s+(.*)", line)
             if match:
                 uri = match.group(1).strip()

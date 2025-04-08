@@ -3,7 +3,6 @@ import subprocess
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-# Путь до конфигурации
 CONFIG_PATH = "/config/config.json"
 
 with open(CONFIG_PATH) as f:
