@@ -12,8 +12,8 @@
     "target": "95.217.132.169",
     "report_formats": ["terminal", "html"],
     "open_report": true,
-    "clear_logs": true,
     "clear_reports": true,
+    "clear_logs": true,
     "purge_on_start": true,
     "report_theme": "dark"
   },

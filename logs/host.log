@@ -1,0 +1,18 @@
+2025-04-10 00:06:03 [INFO] - Сеть secwebscan_network уже существует.
+2025-04-10 00:06:03 [INFO] - PostgreSQL уже работает.
+2025-04-10 00:06:03 [INFO] - Образ secwebscan-base найден.
+2025-04-10 00:06:03 [INFO] - Запуск plugin_runner.py...
+2025-04-10 00:06:03 [INFO] - Выполнение команды: docker exec secwebscan_base python3 /core/plugin_runner.py
+2025-04-10 00:07:05 [INFO] - Запуск collector.py внутри контейнера...
+2025-04-10 00:07:05 [INFO] - Выполнение команды: docker exec secwebscan_base python3 /core/collector.py
+2025-04-10 00:07:05 [INFO] - Генерация отчётов...
+2025-04-10 00:07:05 [INFO] - Начинаем генерацию отчета в формате TERMINAL
+2025-04-10 00:07:05 [INFO] - Выполнение команды: docker exec secwebscan_base python3 /core/report_generator.py --format terminal --timestamp 20250410_000705
+2025-04-10 00:07:06 [INFO] - Отчет в формате TERMINAL успешно сгенерирован.
+2025-04-10 00:07:06 [INFO] - Начинаем генерацию отчета в формате HTML
+2025-04-10 00:07:06 [INFO] - Выполнение команды: docker exec secwebscan_base python3 /core/report_generator.py --format html --timestamp 20250410_000705
+2025-04-10 00:07:07 [INFO] - Отчет в формате HTML успешно сгенерирован.
+2025-04-10 00:07:07 [INFO] - Открытие HTML-отчета: /home/bee/Projects/secwebscan/reports/report_20250410_000705.html
+2025-04-10 00:07:07 [INFO] - Выполнение команды: docker exec secwebscan_base chown -R 1000:1000 /reports
+2025-04-10 00:07:07 [INFO] - Права доступа к /reports обновлены внутри контейнера на 1000:1000
+2025-04-10 00:07:07 [INFO] - SecWebScan завершил выполнение!

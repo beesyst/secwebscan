@@ -116,7 +116,8 @@ def collect():
     connection = connect_to_db()
     cursor = connection.cursor()
 
-    purge_results(cursor)
+    if CONFIG.get("scan_config", {}).get("purge_on_start", False):
+        purge_results(cursor)
 
     total_added = 0
     for module in PLUGINS:
