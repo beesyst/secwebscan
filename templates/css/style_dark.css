@@ -1,0 +1,100 @@
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #121212;
+    color: #e0e0e0;
+    padding: 20px;
+}
+
+h1 {
+    color: #42a5f5;
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.module {
+    margin-bottom: 40px;
+    padding: 20px;
+    background: #1e1e1e;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.module h2 {
+    color: #90caf9;
+    margin-bottom: 10px;
+}
+
+.module h3 {
+    color: #64b5f6;
+    margin-bottom: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+th,
+td {
+    padding: 10px 12px;
+    border: 1px solid #333;
+    text-align: left;
+}
+
+th {
+    background-color: #263238;
+    color: #fff;
+}
+
+td {
+    background-color: #1c1c1c;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+    border-bottom: 1px dotted #ccc;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: max-content;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 5px 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8em;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+.footer {
+    margin-top: 60px;
+    font-size: 0.9em;
+    text-align: center;
+    color: #999;
+}
+
+pre {
+    background-color: #1c1c1c;
+    color: #e0e0e0;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 0.9em;
+}

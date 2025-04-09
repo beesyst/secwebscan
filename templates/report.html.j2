@@ -4,102 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <title>SecWebScan Report</title>
-    <style>
-        body {
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            padding: 20px;
-            color: #333;
-        }
-
-        h1 {
-            color: #007bff;
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .module {
-            margin-bottom: 40px;
-            padding: 20px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .module h2 {
-            color: #343a40;
-            margin-bottom: 10px;
-        }
-
-        .module h3 {
-            color: #007bff;
-            margin-bottom: 10px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        th,
-        td {
-            padding: 10px 12px;
-            border: 1px solid #dee2e6;
-            text-align: left;
-        }
-
-        th {
-            background-color: #e9ecef;
-        }
-
-        .tooltip {
-            position: relative;
-            display: inline-block;
-            cursor: help;
-            border-bottom: 1px dotted #666;
-        }
-
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: max-content;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 4px;
-            padding: 5px 8px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 0.8em;
-        }
-
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        .footer {
-            margin-top: 60px;
-            font-size: 0.9em;
-            text-align: center;
-            color: #888;
-        }
-
-        pre {
-            background-color: #f1f3f5;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 0.9em;
-        }
-    </style>
+    {% if report_theme == "dark" %}
+    <link rel="stylesheet" href="../templates/css/style_dark.css">
+    {% else %}
+    <link rel="stylesheet" href="../templates/css/style_light.css">
+    {% endif %}
 </head>
 
 <body>

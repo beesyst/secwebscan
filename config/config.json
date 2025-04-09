@@ -9,11 +9,13 @@
   },
   "docker_network": "secwebscan_network",
   "scan_config": {
-    "report_formats": ["terminal", "html"],
     "target": "95.217.132.169",
+    "report_formats": ["terminal", "html"],
     "open_report": true,
     "clear_logs": true,
-    "clear_reports": true
+    "clear_reports": true,
+    "purge_on_start": true,
+    "report_theme": "dark"
   },
   "plugins": [
     {

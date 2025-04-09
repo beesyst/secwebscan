@@ -155,9 +155,12 @@ def render_html(results, output_path):
         logging.error(f"Ошибка загрузки шаблона: {e}")
         raise
 
+    theme = CONFIG.get("scan_config", {}).get("report_theme", "light")
+
     rendered = template.render(
         structured_results=results,
         generation_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        report_theme=theme,
     )
 
     with open(output_path, "w", encoding="utf-8") as f:

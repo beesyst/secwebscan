@@ -4,3 +4,4 @@ reports/*
 !reports/.gitkeep
 results/*
 !results/.gitkeep
+core/__pycache__/
