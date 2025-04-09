@@ -95,7 +95,7 @@ def parse(xml_path):
             )
 
     except Exception as e:
-        print(f"[!] Ошибка при парсинге XML: {e}")
+        raise RuntimeError(f"Ошибка при парсинге XML: {e}")
 
     return results
 

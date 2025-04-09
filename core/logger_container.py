@@ -18,7 +18,6 @@ def clear_container_log_if_needed(config: dict):
         try:
             with open(CONTAINER_LOG_PATH, "w", encoding="utf-8") as f:
                 f.truncate(0)
-            print("🧹 container.log очищен (до старта контейнера)")
         except Exception as e:
             print(f"❌ Не удалось очистить container.log: {e}")
 

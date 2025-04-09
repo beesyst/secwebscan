@@ -60,7 +60,7 @@ def parse(json_path):
             )
 
     except Exception as e:
-        print(f"[!] Ошибка при парсинге Nikto: {e}")
+        raise RuntimeError(f"Ошибка при парсинге Nikto: {e}")
 
     return results
 

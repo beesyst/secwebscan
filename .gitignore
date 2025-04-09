@@ -1,5 +1,5 @@
-logs/*
-!logs/.gitkeep
+logs/host.log
+logs/container.log
 reports/*
 !reports/.gitkeep
 results/*
