@@ -1,5 +1,4 @@
 import argparse
-import importlib.util
 import json
 import logging
 import os
@@ -70,6 +69,11 @@ def sort_categories(structured):
         "Network Security": 0,
         "Application Security": 1,
         "DNS Health": 2,
+        "Vulnerability Scan": 3,
+        "Web Catalog & Crawl": 4,
+        "OSINT / Metadata": 5,
+        "Database Security": 6,
+        "Cloud & API Exposure": 7,
         "General Info": 99,
     }
 
@@ -108,23 +112,6 @@ def load_and_categorize_results():
                 except Exception:
                     pass
 
-            summary = ""
-            plugin_path = os.path.join("/plugins", f"{module}.py")
-            if os.path.exists(plugin_path):
-                try:
-                    spec = importlib.util.spec_from_file_location(module, plugin_path)
-                    plugin = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(plugin)
-
-                    if hasattr(plugin, "get_summary"):
-                        summary = plugin.get_summary(data)
-                    else:
-                        summary = str(data)[:80]
-                except Exception as e:
-                    summary = f"[Ошибка summary: {e}]"
-            else:
-                summary = str(data)[:80]
-
             raw_entries.append(
                 {
                     "target": target,
@@ -133,7 +120,6 @@ def load_and_categorize_results():
                     "data": data,
                     "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "module": module,
-                    "summary": summary,
                 }
             )
 
@@ -175,46 +161,43 @@ def generate_pdf(html_path, pdf_path):
 
 
 def show_in_terminal(results):
-    console = Console()
+    console = Console(width=300)
     for target, categories in results.items():
         for category, sections in categories.items():
             for subcat, entries in sections.items():
                 if subcat == "__meta__" or not isinstance(entries, list):
                     continue
-                table = Table(title=f"[bold blue]{target} — {category} / {subcat}")
-                table.add_column("Severity")
-                table.add_column("Time")
-                table.add_column("Summary", overflow="fold")
 
                 for entry in entries:
-                    module = entry.get("module")
                     data = entry.get("data")
-                    summary = ""
+                    module = entry.get("module")
 
-                    plugin_path = os.path.join("/plugins", f"{module}.py")
-                    if os.path.exists(plugin_path):
-                        spec = importlib.util.spec_from_file_location(
-                            module, plugin_path
+                    if isinstance(data, list) and all(
+                        isinstance(d, dict) for d in data
+                    ):
+                        keys = list({k for d in data for k in d.keys()})
+                        table = Table(
+                            title=f"[bold blue]{target} — {category} / {module}",
+                            show_lines=True,
                         )
-                        plugin = importlib.util.module_from_spec(spec)
-                        try:
-                            spec.loader.exec_module(plugin)
-                            if hasattr(plugin, "get_summary"):
-                                summary = plugin.get_summary(data)
-                            else:
-                                summary = json.dumps(data)[:100]
-                        except Exception as e:
-                            summary = f"[Ошибка get_summary: {e}]"
+                        for k in keys:
+                            table.add_column(k, overflow="fold", max_width=100)
+                        for d in data:
+                            table.add_row(*[str(d.get(k, "")) for k in keys])
+                        console.print(table)
                     else:
-                        summary = str(data)[:100]
-
-                    table.add_row(
-                        entry.get("severity", "-"),
-                        entry.get("created_at", "-"),
-                        summary,
-                    )
-
-                console.print(table)
+                        table = Table(
+                            title=f"[bold blue]{target} — {category} / {module}"
+                        )
+                        table.add_column("Severity")
+                        table.add_column("Created at")
+                        table.add_column("Data", overflow="fold")
+                        table.add_row(
+                            entry.get("severity", "-"),
+                            entry.get("created_at", "-"),
+                            json.dumps(data, ensure_ascii=False)[:1000],
+                        )
+                        console.print(table)
 
 
 def main(format=None, timestamp=None):

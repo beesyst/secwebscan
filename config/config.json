@@ -9,7 +9,7 @@
   },
   "docker_network": "secwebscan_network",
   "scan_config": {
-    "target": "one.one.one.one",
+    "target": "1.1.1.1",
     "report_formats": ["terminal", "html"],
     "open_report": true,
     "clear_reports": true,
