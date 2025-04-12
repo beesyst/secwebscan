@@ -99,12 +99,12 @@ def load_and_categorize_results():
 
     try:
         cursor.execute(
-            "SELECT target, category, severity, data, created_at, module FROM results ORDER BY created_at DESC"
+            "SELECT target, category, data, created_at, module FROM results ORDER BY created_at DESC"
         )
         rows = cursor.fetchall()
 
         for row in rows:
-            target, category, severity, data, created_at, module = row
+            target, category, data, created_at, module = row
 
             if isinstance(data, str):
                 try:
@@ -116,7 +116,6 @@ def load_and_categorize_results():
                 {
                     "target": target,
                     "category": category,
-                    "severity": severity,
                     "data": data,
                     "created_at": created_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "module": module,
@@ -175,13 +174,24 @@ def show_in_terminal(results):
                     if isinstance(data, list) and all(
                         isinstance(d, dict) for d in data
                     ):
-                        keys = list({k for d in data for k in d.keys()})
+                        keys = list(
+                            {
+                                k
+                                for d in data
+                                for k in d.keys()
+                                if k not in ["severity", "created_at", "module"]
+                            }
+                        )
                         table = Table(
                             title=f"[bold blue]{target} — {category} / {module}",
                             show_lines=True,
                         )
                         for k in keys:
-                            table.add_column(k, overflow="fold", max_width=100)
+                            table.add_column(
+                                k.replace("_", " ").title(),
+                                overflow="fold",
+                                max_width=100,
+                            )
                         for d in data:
                             table.add_row(*[str(d.get(k, "")) for k in keys])
                         console.print(table)
@@ -189,14 +199,8 @@ def show_in_terminal(results):
                         table = Table(
                             title=f"[bold blue]{target} — {category} / {module}"
                         )
-                        table.add_column("Severity")
-                        table.add_column("Created at")
                         table.add_column("Data", overflow="fold")
-                        table.add_row(
-                            entry.get("severity", "-"),
-                            entry.get("created_at", "-"),
-                            json.dumps(data, ensure_ascii=False)[:1000],
-                        )
+                        table.add_row(json.dumps(data, ensure_ascii=False)[:1000])
                         console.print(table)
 
 
