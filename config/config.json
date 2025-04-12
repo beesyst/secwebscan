@@ -9,7 +9,7 @@
   },
   "docker_network": "secwebscan_network",
   "scan_config": {
-    "target": "95.217.132.169",
+    "target": "one.one.one.one",
     "report_formats": ["terminal", "html"],
     "open_report": true,
     "clear_reports": true,
@@ -42,9 +42,6 @@
         },
         "extreme": {
           "args": "-T4 -p- -sS -sV -O -Pn --script \"default,safe,vuln,discovery\" --max-retries 2 --host-timeout 5m"
-        },
-        "stealth": {
-          "args": "-T2 -sS -Pn --max-retries 1 --host-timeout 30s"
         }
       }
     },
@@ -80,9 +77,33 @@
         },
         "extreme": {
           "args": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ssl -Plugins ALL"
+        }
+      }
+    },
+    {
+      "name": "dig",
+      "enabled": true,
+      "category": "DNS Health",
+      "install": ["apt-get update", "apt-get install -y dnsutils"],
+      "command": "",
+      "output": "results/dig.json",
+      "parser": "python",
+      "level": "easy",
+      "levels": {
+        "custom": {
+          "args": ""
         },
-        "stealth": {
-          "args": "-Tuning 2,4 -Display P -maxtime 30 -nointeractive -evasion 1,2,6"
+        "easy": {
+          "args": "A"
+        },
+        "middle": {
+          "args": "A MX NS TXT"
+        },
+        "hard": {
+          "args": "A MX NS TXT CNAME SOA"
+        },
+        "extreme": {
+          "args": "A MX NS TXT CNAME SOA SPF ANY"
         }
       }
     },

@@ -1,4 +1,5 @@
 import asyncio
+import importlib.util
 import json
 import logging
 import os
@@ -65,7 +66,6 @@ async def install_plugin(plugin):
 
 async def run_tool(plugin):
     name = plugin["name"]
-    command_template = plugin["command"]
     output_path = os.path.join(ROOT_DIR, plugin["output"])
     parser_type = plugin.get("parser", "json")
 
@@ -83,14 +83,29 @@ async def run_tool(plugin):
 
     level = plugin.get("level", "easy")
     level_args = plugin.get("levels", {}).get(level, {}).get("args", "")
-    command = command_template.replace("{args}", level_args).replace("{target}", TARGET)
 
+    command_template = plugin.get("command", "")
+    command = command_template.replace("{args}", level_args).replace("{target}", TARGET)
     if "{stdout}" in command:
         command = command.replace("{stdout}", output_path)
 
-    logging.info(f"Запуск {name} (уровень: {level}): {command}")
-
     try:
+        if parser_type == "python" or not command_template:
+            plugin_path = os.path.join(ROOT_DIR, "plugins", f"{name}.py")
+            if not os.path.exists(plugin_path):
+                logging.error(f"Файл плагина {plugin_path} не найден!")
+                return
+
+            spec = importlib.util.spec_from_file_location(name, plugin_path)
+            plugin_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(plugin_module)
+
+            logging.info(f"Запуск Python-плагина {name}...")
+            json_file = plugin_module.scan_with_dig()
+            logging.info(f"{name} завершен. JSON сохранён в {json_file}")
+            return
+
+        logging.info(f"Запуск {name} (уровень: {level}): {command}")
         process = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,
