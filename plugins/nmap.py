@@ -108,6 +108,21 @@ def get_summary(data):
     )
 
 
+def get_column_order():
+    return [
+        "port",
+        "protocol",
+        "state",
+        "reason",
+        "service_name",
+        "product",
+        "version",
+        "extra",
+        "cpe",
+        "script_output",
+    ]
+
+
 if __name__ == "__main__":
     xml_file = scan_with_nmap()
     parsed = parse(xml_file)

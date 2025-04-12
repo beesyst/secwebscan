@@ -34,29 +34,20 @@
         <h3>{{ subcategory }}</h3>
 
         {% set exclude_keys = ["source", "severity", "created_at", "module"] %}
+        {% set all_keys = entries[0]["data"][0].keys() | reject("in", exclude_keys) | list %}
+        {% set module = entries[0]["module"] %}
+        {% set column_order = namespace(keys=all_keys) %}
 
-        {% if entries[0]["module"] == "nikto" %}
+        {% if module == "nmap" %}
+        {% set column_order.keys = [
+        "cpe", "port", "extra", "state", "reason", "product", "version", "protocol", "service_name", "script_output"
+        ] | select("in", all_keys) | list %}
+        {% endif %}
+
         <table>
             <thead>
                 <tr>
-                    <th>URI</th>
-                    <th>Message</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in entries[0]["data"] %}
-                <tr>
-                    <td>{{ row.uri or "-" }}</td>
-                    <td>{{ row.message or "-" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <table>
-            <thead>
-                <tr>
-                    {% for key in entries[0]["data"][0].keys() if key not in exclude_keys %}
+                    {% for key in column_order.keys %}
                     <th>{{ key.replace('_', ' ') | title }}</th>
                     {% endfor %}
                 </tr>
@@ -64,14 +55,13 @@
             <tbody>
                 {% for row in entries[0]["data"] %}
                 <tr>
-                    {% for key, val in row.items() if key not in exclude_keys %}
-                    <td>{{ val if val else "-" }}</td>
+                    {% for key in column_order.keys %}
+                    <td>{{ row[key] if row[key] else "-" }}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% endif %}
         {% else %}
         <h3>{{ subcategory }}</h3>
         <pre>{{ entries[0]["data"] }}</pre>

@@ -159,8 +159,12 @@ def generate_pdf(html_path, pdf_path):
     logging.info(f"PDF-отчет создан: {pdf_path}")
 
 
+import importlib
+
+
 def show_in_terminal(results):
     console = Console(width=300)
+
     for target, categories in results.items():
         for category, sections in categories.items():
             for subcat, entries in sections.items():
@@ -174,14 +178,28 @@ def show_in_terminal(results):
                     if isinstance(data, list) and all(
                         isinstance(d, dict) for d in data
                     ):
-                        keys = list(
-                            {
-                                k
-                                for d in data
-                                for k in d.keys()
-                                if k not in ["severity", "created_at", "module"]
-                            }
+                        # Попробуем получить порядок колонок из plugins/{module}.py
+                        column_order = None
+                        try:
+                            plugin_module = importlib.import_module(f"plugins.{module}")
+                            if hasattr(plugin_module, "get_column_order"):
+                                column_order = plugin_module.get_column_order()
+                        except Exception:
+                            pass
+
+                        # Вычисляем уникальные ключи
+                        all_keys = [
+                            k
+                            for d in data
+                            for k in d.keys()
+                            if k not in ["severity", "created_at", "module"]
+                        ]
+                        keys = (
+                            [k for k in column_order if k in all_keys]
+                            if column_order
+                            else list(dict.fromkeys(all_keys))
                         )
+
                         table = Table(
                             title=f"[bold blue]{target} — {category} / {module}",
                             show_lines=True,
@@ -195,6 +213,7 @@ def show_in_terminal(results):
                         for d in data:
                             table.add_row(*[str(d.get(k, "")) for k in keys])
                         console.print(table)
+
                     else:
                         table = Table(
                             title=f"[bold blue]{target} — {category} / {module}"
