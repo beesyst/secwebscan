@@ -108,6 +108,36 @@
       }
     },
     {
+      "name": "nuclei",
+      "enabled": true,
+      "category": "Vulnerability Scan",
+      "install": [
+        "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+        "cp /root/go/bin/nuclei /usr/local/bin/nuclei"
+      ],
+      "command": "nuclei {args} -u http://{target} -json -o {stdout}",
+      "output": "results/nuclei.json",
+      "parser": "json",
+      "level": "easy",
+      "levels": {
+        "custom": {
+          "args": "-t /nuclei-templates -severity medium,high"
+        },
+        "easy": {
+          "args": "-severity low,medium"
+        },
+        "middle": {
+          "args": "-severity medium,high -rate-limit 50"
+        },
+        "hard": {
+          "args": "-severity high,critical -rate-limit 100"
+        },
+        "extreme": {
+          "args": "-severity critical -rate-limit 200 -c 100"
+        }
+      }
+    },
+    {
       "name": "amass",
       "category": "discovery",
       "command": "amass enum -d {target} -json /results/amass.json",

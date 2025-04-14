@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
 
@@ -24,6 +25,22 @@ DB_CONTAINER = CONFIG["database"]["container_name"]
 NETWORK_NAME = CONFIG["docker_network"]
 
 
+def spinner(prefix: str, stop_event: threading.Event):
+    symbols = ["⠁", "⠂", "⠄", "⠂"]
+    i = 0
+    try:
+        sys.stdout.write("\033[?25l")
+        while not stop_event.is_set():
+            sys.stdout.write(f"\r{prefix} {symbols[i % len(symbols)]}")
+            sys.stdout.flush()
+            i += 1
+            time.sleep(0.1)
+    finally:
+        sys.stdout.write("\r" + " " * 80 + "\r")
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
+
+
 def run_command(command, cwd=None, hide_output=True):
     logging.info(f"Выполнение команды: {command}")
     result = subprocess.run(
@@ -34,8 +51,32 @@ def run_command(command, cwd=None, hide_output=True):
         stderr=subprocess.DEVNULL if hide_output else None,
     )
     if result.returncode != 0:
-        logging.error(f"Ошибка выполнения команды: {command}")
         print(f"❌ Ошибка выполнения: {command}")
+        logging.error(f"Ошибка выполнения команды: {command}")
+        return False
+    return True
+
+
+def run_command_with_spinner(command, prefix, cwd=None, hide_output=True):
+    # logging.info(f"{prefix}...")
+    stop_event = threading.Event()
+    spinner_thread = threading.Thread(target=spinner, args=(prefix, stop_event))
+    spinner_thread.start()
+
+    result = subprocess.run(
+        command,
+        shell=True,
+        cwd=cwd,
+        stdout=subprocess.DEVNULL if hide_output else None,
+        stderr=subprocess.DEVNULL if hide_output else None,
+    )
+
+    stop_event.set()
+    spinner_thread.join()
+
+    if result.returncode != 0:
+        print(f"❌ Ошибка выполнения: {command}")
+        logging.error(f"Ошибка выполнения команды: {command}")
         return False
     return True
 
@@ -43,49 +84,53 @@ def run_command(command, cwd=None, hide_output=True):
 def check_docker_installed():
     try:
         subprocess.run(["docker", "--version"], check=True, stdout=subprocess.DEVNULL)
+        logging.info("Docker установлен.")
     except subprocess.CalledProcessError:
-        logging.critical("Docker не установлен!")
         print("🚨 Ошибка: Docker не установлен.")
+        logging.critical("Docker не установлен!")
         exit(1)
 
 
 def clean_docker_environment():
-    print("🖧 Проверка сети Docker...")
     result = subprocess.run(
         ["docker", "network", "ls", "-q", "--filter", f"name={NETWORK_NAME}"],
         stdout=subprocess.PIPE,
         text=True,
     )
     if not result.stdout.strip():
-        print(f"🌐 Создание сети {NETWORK_NAME}...")
-        logging.info(f"Создание сети Docker: {NETWORK_NAME}")
-        subprocess.run(
-            ["docker", "network", "create", NETWORK_NAME],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        print(f"🌐 Сеть {NETWORK_NAME} не найдена. Создаю...")
+        logging.info(f"Сеть {NETWORK_NAME} не найдена. Создание...")
+        run_command_with_spinner(
+            f"docker network create {NETWORK_NAME}", "⏳ Создание сети"
         )
+        print(f"\r✅ Сеть {NETWORK_NAME} установлена.")
+        logging.info(f"Создана сеть Docker: {NETWORK_NAME}")
     else:
-        print(f"✅ Сеть {NETWORK_NAME} уже существует. Пропускаем создание.")
+        print(f"✅ Сеть {NETWORK_NAME} найдена.")
         logging.info(f"Сеть {NETWORK_NAME} уже существует.")
 
 
 def start_postgres():
-    print("🐘 Запуск PostgreSQL...")
     result = subprocess.run(
         ["docker", "ps", "-q", "--filter", f"name={DB_CONTAINER}"],
         stdout=subprocess.PIPE,
         text=True,
     )
     if result.stdout.strip():
-        print("✅ PostgreSQL уже запущен. Пропускаем создание.")
+        print("✅ PostgreSQL запущен.")
         logging.info("PostgreSQL уже работает.")
         return
 
-    run_command("docker compose -f db/compose.yaml up --build -d", cwd=ROOT_DIR)
+    print("🗄️ PostgreSQL не найден. Запускаю контейнер...")
+    logging.info("Контейнер PostgreSQL не найден. Запуск...")
+    run_command_with_spinner(
+        "docker compose -f db/compose.yaml up --build -d",
+        "⏳ Запуск PostgreSQL...",
+        cwd=ROOT_DIR,
+    )
 
-    print("⏳ Ожидание готовности PostgreSQL...")
-    for attempt in range(30):
-        print(f"🔄 Проверка готовности PostgreSQL (попытка {attempt + 1}/30)...")
+    time.sleep(1)
+    for _ in range(30):
         result = subprocess.run(
             [
                 "docker",
@@ -99,12 +144,12 @@ def start_postgres():
             stderr=subprocess.PIPE,
         )
         if result.returncode == 0:
-            print("✅ PostgreSQL готов к работе!")
+            print("\r✅ PostgreSQL готов к работе!")
             logging.info("PostgreSQL запущен и готов к работе.")
             return
-        time.sleep(2)
+        time.sleep(1)
 
-    print("❌ Ошибка: PostgreSQL не запустился.")
+    print("\n❌ Ошибка: PostgreSQL не запустился.")
     logging.critical("PostgreSQL не стартовал вовремя!")
     exit(1)
 
@@ -116,15 +161,22 @@ def ensure_secwebscan_base_image():
         text=True,
     )
     if not result.stdout.strip():
-        print("📦 Образ secwebscan-base не найден. Собираем...")
-        logging.info("Образ secwebscan-base не найден. Начинаем сборку...")
-        build_cmd = "docker build -t secwebscan-base -f docker/Dockerfile.base ."
-        success = run_command(build_cmd, cwd=ROOT_DIR)
+        print("📦 Образ secwebscan-base не найден. Начинаю сборку...")
+        logging.info("Образ secwebscan-base не найден. Запуск сборки...")
+        success = run_command_with_spinner(
+            "docker build -t secwebscan-base -f docker/Dockerfile.base .",
+            "⏳ Сборка образа",
+            cwd=ROOT_DIR,
+            hide_output=True,
+        )
         if not success:
-            logging.critical("Не удалось собрать образ secwebscan-base.")
-            print("❌ Критическая ошибка: сборка образа не удалась.")
+            print("❌ Сборка образа завершилась с ошибкой.")
+            logging.critical("Сборка secwebscan-base не удалась.")
             exit(1)
+        print("✅ Образ secwebscan-base собран успешно.")
+        logging.info("Сборка secwebscan-base завершена успешно.")
     else:
+        print("✅ Образ secwebscan-base существует.")
         logging.info("Образ secwebscan-base найден.")
 
 
@@ -135,7 +187,8 @@ def start_secwebscan_container():
         text=True,
     )
     if result.stdout.strip():
-        print("✅ Контейнер secwebscan_base уже работает. Пропускаем.")
+        print("✅ Контейнер secwebscan_base уже работает.")
+        logging.info("Контейнер secwebscan_base уже запущен.")
         return
 
     result_all = subprocess.run(
@@ -145,9 +198,12 @@ def start_secwebscan_container():
     )
     if result_all.stdout.strip():
         print("🗑️ Обнаружен остановленный контейнер secwebscan_base. Удаляем...")
+        logging.info("Удаление остановленного контейнера secwebscan_base.")
         subprocess.run(["docker", "rm", "-f", "secwebscan_base"])
 
-    print("🚀 Запуск контейнера secwebscan_base...")
+    print("📦 Контейнер secwebscan-base не найден. Запускаю...")
+    logging.info("Запуск контейнера secwebscan_base...")
+
     volumes = [
         "-v",
         f"{os.path.join(ROOT_DIR, 'core')}:/core",
@@ -165,25 +221,31 @@ def start_secwebscan_container():
         f"{os.path.join(ROOT_DIR, 'plugins')}:/plugins",
     ]
 
-    run_command(
+    success = run_command_with_spinner(
         f"docker run -d --name secwebscan_base --network {NETWORK_NAME} "
         + " ".join(volumes)
         + " secwebscan-base tail -f /dev/null",
+        prefix="⏳ Запуск контейнера secwebscan_base...",
         cwd=ROOT_DIR,
     )
+
+    if success:
+        print("✅ Контейнер secwebscan_base готов.")
+        logging.info("Контейнер secwebscan_base запущен успешно.")
 
 
 def run_plugins():
     print("🔧 Запуск всех плагинов асинхронно...")
-    logging.info("Запуск plugin_runner.py...")
-    run_command(
-        "docker exec secwebscan_base python3 /core/plugin_runner.py", hide_output=False
+    logging.info("Запуск всех плагинов через plugin_runner.py")
+    run_command_with_spinner(
+        "docker exec secwebscan_base python3 /core/plugin_runner.py",
+        "⏳ Плагины выполняются...",
     )
 
 
 def run_collector():
     print("📥 Сбор результатов в БД...")
-    logging.info("Запуск collector.py внутри контейнера...")
+    logging.info("Сбор результатов: запуск collector.py внутри контейнера")
     run_command(
         "docker exec secwebscan_base python3 /core/collector.py", hide_output=False
     )
@@ -191,50 +253,44 @@ def run_collector():
 
 def generate_reports():
     print("📄 Генерация отчетов...")
-    logging.info("Генерация отчётов...")
-
+    logging.info("Генерация отчётов начата.")
     formats = CONFIG.get("scan_config", {}).get("report_formats", ["html"])
     open_report = CONFIG.get("scan_config", {}).get("open_report", False)
-
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     html_report_name = f"report_{timestamp}.html"
     html_report_path = os.path.join(ROOT_DIR, "reports", html_report_name)
 
     for fmt in formats:
         if fmt not in ["html", "pdf", "txt", "terminal"]:
-            logging.warning(f"Неподдерживаемый формат отчета: {fmt}")
             print(f"⚠️ Формат {fmt} не поддерживается. Пропускаем.")
+            logging.warning(f"Неподдерживаемый формат отчета: {fmt}")
             continue
 
         print(f"📝 Генерация {fmt.upper()}...")
-        logging.info(f"Начинаем генерацию отчета в формате {fmt.upper()}")
-
+        logging.info(f"Генерация отчета в формате {fmt.upper()}...")
         success = run_command(
             f"docker exec secwebscan_base python3 /core/report_generator.py --format {fmt} --timestamp {timestamp}",
             hide_output=False,
         )
 
         if success:
-            logging.info(f"Отчет в формате {fmt.upper()} успешно сгенерирован.")
             print(f"✅ Отчет {fmt.upper()} готов.")
+            logging.info(f"Отчет {fmt.upper()} сгенерирован успешно.")
         else:
-            logging.error(f"Не удалось сгенерировать отчет в формате {fmt.upper()}.")
+            logging.error(f"Ошибка при генерации отчета в формате {fmt.upper()}.")
             continue
 
-        if open_report and fmt == "html":
-            if os.path.exists(html_report_path):
-                try:
-                    print(f"🌐 Открываем HTML-отчёт в браузере: {html_report_path}")
-                    logging.info(f"Открытие HTML-отчета: {html_report_path}")
-                    subprocess.Popen(
-                        ["xdg-open", html_report_path],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
-                except Exception as e:
-                    logging.warning(f"Не удалось открыть HTML-отчет: {e}")
-            else:
-                logging.warning(f"HTML-отчет не найден: {html_report_path}")
+        if open_report and fmt == "html" and os.path.exists(html_report_path):
+            try:
+                print(f"🌐 Открываем HTML-отчет в браузере: {html_report_path}")
+                logging.info(f"Открытие HTML-отчета: {html_report_path}")
+                subprocess.Popen(
+                    ["xdg-open", html_report_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except Exception as e:
+                logging.warning(f"Не удалось открыть HTML-отчет: {e}")
 
 
 def post_scan_chown():
@@ -245,16 +301,16 @@ def post_scan_chown():
             f"docker exec secwebscan_base chown -R {user_id}:{group_id} /reports",
             hide_output=False,
         )
-        logging.info(
-            f"Права доступа к /reports обновлены внутри контейнера на {user_id}:{group_id}"
-        )
         print(f"✅ Права на /reports обновлены: {user_id}:{group_id}")
+        logging.info(f"Изменены права доступа /reports на {user_id}:{group_id}")
     except Exception as e:
-        logging.warning(f"Не удалось изменить владельца отчётов внутри контейнера: {e}")
         print(f"⚠️ Ошибка при попытке сменить владельца отчётов: {e}")
+        logging.warning(f"Не удалось изменить владельца отчётов: {e}")
 
 
 def main():
+    print("🚀 Запуск SecWebScan...")
+    logging.info("==== SecWebScan запуск начат ====")
     check_docker_installed()
     clean_docker_environment()
     start_postgres()
@@ -265,7 +321,7 @@ def main():
     generate_reports()
     post_scan_chown()
     print("✅ SecWebScan завершил выполнение!")
-    logging.info("SecWebScan завершил выполнение!")
+    logging.info("==== SecWebScan завершён успешно ====")
 
 
 if __name__ == "__main__":

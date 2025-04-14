@@ -90,6 +90,7 @@ async def run_tool(plugin):
         command = command.replace("{stdout}", output_path)
 
     try:
+        # Обработка чисто Python-плагинов
         if parser_type == "python" or not command_template:
             plugin_path = os.path.join(ROOT_DIR, "plugins", f"{name}.py")
             if not os.path.exists(plugin_path):
@@ -105,6 +106,7 @@ async def run_tool(plugin):
             logging.info(f"{name} завершен. JSON сохранён в {json_file}")
             return
 
+        # Shell-based tool execution
         logging.info(f"Запуск {name} (уровень: {level}): {command}")
         process = await asyncio.create_subprocess_shell(
             command,
@@ -117,10 +119,12 @@ async def run_tool(plugin):
             logging.error(f"{name} завершился с ошибкой: {stderr.decode().strip()}")
             return
 
-        if parser_type == "xml":
-            logging.info(f"{name} использует XML. Результат в {output_path}")
+        # Если тулза сохраняет JSON или XML напрямую в файл — ничего не делаем, просто лог
+        if parser_type in ["xml", "json"]:
+            logging.info(f"{name} завершен. Результат сохранён в {output_path}")
             return
 
+        # Только если stdout содержит JSON — сохраняем вручную
         try:
             result = json.loads(stdout.decode())
         except Exception:

@@ -178,7 +178,6 @@ def show_in_terminal(results):
                     if isinstance(data, list) and all(
                         isinstance(d, dict) for d in data
                     ):
-                        # Попробуем получить порядок колонок из plugins/{module}.py
                         column_order = None
                         try:
                             plugin_module = importlib.import_module(f"plugins.{module}")
@@ -187,7 +186,6 @@ def show_in_terminal(results):
                         except Exception:
                             pass
 
-                        # Вычисляем уникальные ключи
                         all_keys = [
                             k
                             for d in data
