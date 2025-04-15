@@ -9,7 +9,8 @@
   },
   "docker_network": "secwebscan_network",
   "scan_config": {
-    "target": "1.1.1.1",
+    "target_ip": "44.228.249.3",
+    "target_domain": "testphp.vulnweb.com",
     "report_formats": ["terminal", "html"],
     "open_report": true,
     "clear_reports": true,
@@ -21,6 +22,8 @@
     {
       "name": "nmap",
       "enabled": true,
+      "ip_required": true,
+      "vhost_required": false,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
       "command": "nmap {args} {target} -oX {stdout}",
@@ -48,6 +51,8 @@
     {
       "name": "nikto",
       "enabled": true,
+      "ip_required": false,
+      "vhost_required": true,
       "category": "Application Security",
       "install": [
         "apt-get update",
@@ -83,6 +88,8 @@
     {
       "name": "dig",
       "enabled": true,
+      "ip_required": false,
+      "vhost_required": true,
       "category": "DNS Health",
       "install": ["apt-get update", "apt-get install -y dnsutils"],
       "command": "",
@@ -110,6 +117,8 @@
     {
       "name": "nuclei",
       "enabled": true,
+      "ip_required": false,
+      "vhost_required": true,
       "category": "Vulnerability Scan",
       "install": [
         "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
@@ -170,13 +179,6 @@
       "category": "fuzzing",
       "command": "ffuf -u http://{target}/FUZZ -w /wordlists/common.txt -of json -o /results/ffuf.json",
       "output": "results/ffuf.json",
-      "enabled": false
-    },
-    {
-      "name": "nuclei",
-      "category": "vulnerability",
-      "command": "nuclei -u http://{target} -json -o /results/nuclei.json",
-      "output": "results/nuclei.json",
       "enabled": false
     }
   ]

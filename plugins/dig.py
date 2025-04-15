@@ -9,7 +9,15 @@ CONFIG_PATH = "/config/config.json"
 with open(CONFIG_PATH) as f:
     CONFIG = json.load(f)
 
-TARGET = CONFIG["scan_config"]["target"]
+# Пытаемся взять сначала домен, иначе IP
+TARGET = CONFIG["scan_config"].get("target_domain") or CONFIG["scan_config"].get(
+    "target_ip"
+)
+
+if not TARGET:
+    raise ValueError(
+        "Для dig требуется target_domain или target_ip, но они не указаны."
+    )
 
 
 def is_ip(target):
@@ -140,4 +148,4 @@ def get_summary(data):
 if __name__ == "__main__":
     json_file = scan_with_dig()
     parsed = parse(json_file)
-    print(json.dumps(parsed, indent=2))
+    print(json.dumps(parsed, indent=2, ensure_ascii=False))

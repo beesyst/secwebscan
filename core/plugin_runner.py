@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import shutil
-import socket
 from datetime import datetime
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,11 +17,14 @@ with open(CONFIG_PATH, "r") as f:
 setup_container_logger()
 
 PLUGINS = CONFIG.get("plugins", [])
-target_raw = CONFIG.get("scan_config", {}).get("target", "127.0.0.1")
-try:
-    TARGET = socket.gethostbyname(target_raw)
-except socket.gaierror:
-    TARGET = target_raw
+SCAN_CONFIG = CONFIG.get("scan_config", {})
+TARGET_IP = SCAN_CONFIG.get("target_ip")
+TARGET_DOMAIN = SCAN_CONFIG.get("target_domain")
+
+if not TARGET_IP and not TARGET_DOMAIN:
+    raise ValueError(
+        "Не указан ни target_ip, ни target_domain в конфиге. Укажите хотя бы один."
+    )
 
 
 def is_tool_installed(tool_name):
@@ -70,8 +72,20 @@ async def run_tool(plugin):
     parser_type = plugin.get("parser", "json")
 
     if not plugin.get("enabled", False):
-        logging.info(f"⏭ {name} отключен в конфиге. Пропускаем.")
+        logging.info(f"{name} отключен в конфиге. Пропускаем.")
         return
+
+    ip_required = plugin.get("ip_required", False)
+    vhost_required = plugin.get("vhost_required", False)
+
+    if ip_required and not TARGET_IP:
+        logging.info(f"{name} требует IP, но он не указан. Пропускаем.")
+        return
+    if vhost_required and not TARGET_DOMAIN:
+        logging.info(f"{name} требует домен, но он не указан. Пропускаем.")
+        return
+
+    TARGET = TARGET_IP if ip_required else TARGET_DOMAIN
 
     if parser_type == "xml" and os.path.exists(output_path):
         logging.info(f"Удаляем старый XML: {output_path}")
@@ -90,7 +104,6 @@ async def run_tool(plugin):
         command = command.replace("{stdout}", output_path)
 
     try:
-        # Обработка чисто Python-плагинов
         if parser_type == "python" or not command_template:
             plugin_path = os.path.join(ROOT_DIR, "plugins", f"{name}.py")
             if not os.path.exists(plugin_path):
@@ -106,7 +119,6 @@ async def run_tool(plugin):
             logging.info(f"{name} завершен. JSON сохранён в {json_file}")
             return
 
-        # Shell-based tool execution
         logging.info(f"Запуск {name} (уровень: {level}): {command}")
         process = await asyncio.create_subprocess_shell(
             command,
@@ -119,12 +131,10 @@ async def run_tool(plugin):
             logging.error(f"{name} завершился с ошибкой: {stderr.decode().strip()}")
             return
 
-        # Если тулза сохраняет JSON или XML напрямую в файл — ничего не делаем, просто лог
         if parser_type in ["xml", "json"]:
             logging.info(f"{name} завершен. Результат сохранён в {output_path}")
             return
 
-        # Только если stdout содержит JSON — сохраняем вручную
         try:
             result = json.loads(stdout.decode())
         except Exception:

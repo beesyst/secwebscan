@@ -1,5 +1,4 @@
 import json
-import re
 import subprocess
 from datetime import datetime
 
@@ -8,13 +7,23 @@ CONFIG_PATH = "/config/config.json"
 with open(CONFIG_PATH) as f:
     CONFIG = json.load(f)
 
-TARGET = CONFIG["scan_config"]["target"]
+TARGET = CONFIG["scan_config"].get("target_domain")
+if not TARGET:
+    raise ValueError("Для nikto требуется target_domain, но он не указан в конфиге.")
 
 
 def scan_with_nikto():
     output_path = "/results/nikto.json"
-    cmd = f"nikto -h http://{TARGET} -o {output_path} -Format json"
-    subprocess.run(cmd, shell=True)
+    cmd = f"nikto -h https://{TARGET} -p 443 -o {output_path} -Format json -Display V -ssl -followredirects"
+
+    process = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    stdout, stderr = process.communicate()
+
+    if process.returncode != 0:
+        raise RuntimeError(f"Nikto завершился с ошибкой: {stderr.decode().strip()}")
+
     return output_path
 
 
@@ -24,28 +33,22 @@ def parse(json_path):
     try:
         with open(json_path, "r") as f:
             raw = f.read()
-
-        try:
             data = json.loads(raw)
-            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-                raw_output = data[0].get("data", "")
-            elif isinstance(data, dict):
-                raw_output = data.get("data", "")
-            else:
-                raw_output = raw
-        except Exception:
-            raw_output = raw
+
+        if not data or "vulnerabilities" not in data[0]:
+            return results
 
         parsed_entries = []
-
-        for line in raw_output.splitlines():
-            match = re.match(r"^\+ (\/[^\s:]*):\s+(.*)", line)
-            if match:
-                uri = match.group(1).strip()
-                message = match.group(2).strip()
-                parsed_entries.append(
-                    {"uri": uri, "message": message, "severity": "info"}
-                )
+        for vuln in data[0]["vulnerabilities"]:
+            parsed_entries.append(
+                {
+                    "url": vuln.get("url", "-"),
+                    "method": vuln.get("method", "-"),
+                    "msg": vuln.get("msg", "-"),
+                    "id": vuln.get("id", "-"),
+                    "severity": "info",
+                }
+            )
 
         if parsed_entries:
             results.append(
@@ -67,13 +70,17 @@ def parse(json_path):
 
 def get_summary(data):
     return " | ".join(
-        f"{d.get('uri', '-')}: {d.get('message', '-')[:40]}"
+        f"{d.get('url', '-')}: {d.get('msg', '-')[:40]}"
         for d in data
         if isinstance(d, dict)
     )
 
 
+def get_column_order():
+    return ["url", "method", "msg", "id"]
+
+
 if __name__ == "__main__":
     json_file = scan_with_nikto()
     parsed = parse(json_file)
-    print(json.dumps(parsed, indent=2))
+    print(json.dumps(parsed, indent=2, ensure_ascii=False))

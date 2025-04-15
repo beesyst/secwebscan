@@ -8,7 +8,9 @@ CONFIG_PATH = "/config/config.json"
 with open(CONFIG_PATH) as f:
     CONFIG = json.load(f)
 
-TARGET = CONFIG["scan_config"]["target"]
+TARGET = CONFIG["scan_config"].get("target_ip")
+if not TARGET:
+    raise ValueError("Для nmap требуется target_ip, но он не указан в конфиге.")
 
 
 def scan_with_nmap():

@@ -44,24 +44,21 @@ def categorize_results(entries):
         plugin["name"]: plugin.get("category", "General Info") for plugin in PLUGINS
     }
 
-    structured = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    meta_inserted = set()
+    structured = defaultdict(dict)
+    global_meta = {"created_at": None}
 
     for entry in entries:
-        target = entry["target"]
         module = entry.get("module")
         category = plugin_categories.get(module, "General Info")
 
-        if target not in meta_inserted:
-            structured[target]["__meta__"] = {
-                "created_at": entry.get("created_at", "Unknown"),
-                "mac": entry.get("mac", "-"),
-            }
-            meta_inserted.add(target)
+        if module not in structured[category]:
+            structured[category][module] = []
+        structured[category][module].append(entry)
 
-        structured[target][category][module].append(entry)
+        if global_meta["created_at"] is None and entry.get("created_at"):
+            global_meta["created_at"] = entry["created_at"]
 
-    return structured
+    return structured, global_meta
 
 
 def sort_categories(structured):
@@ -77,8 +74,29 @@ def sort_categories(structured):
         "General Info": 99,
     }
 
+    target_order = []
+    ip_targets = []
+    domain_targets = []
+
+    for target in structured:
+        try:
+            import ipaddress
+
+            ipaddress.ip_address(target)
+            ip_targets.append(target)
+        except ValueError:
+            domain_targets.append(target)
+
+    ip_targets.sort()
+    domain_targets.sort()
+    target_order = ip_targets + domain_targets
+
     sorted_targets = OrderedDict()
-    for target, categories in structured.items():
+    for target in target_order:
+        if target not in structured:
+            continue
+
+        categories = structured[target]
         sorted_cats = OrderedDict()
 
         if "__meta__" in categories:
@@ -89,6 +107,7 @@ def sort_categories(structured):
             sorted_cats[k] = other_cats[k]
 
         sorted_targets[target] = sorted_cats
+
     return sorted_targets
 
 
@@ -131,7 +150,24 @@ def load_and_categorize_results():
     return categorize_results(raw_entries)
 
 
-def render_html(results, output_path):
+def sort_categories_by_priority(raw_results):
+    priority = {
+        "Network Security": 0,
+        "Application Security": 1,
+        "DNS Health": 2,
+        "Vulnerability Scan": 3,
+        "Web Catalog & Crawl": 4,
+        "OSINT / Metadata": 5,
+        "Database Security": 6,
+        "Cloud & API Exposure": 7,
+        "General Info": 99,
+    }
+    return OrderedDict(
+        sorted(raw_results.items(), key=lambda item: priority.get(item[0], 50))
+    )
+
+
+def render_html(results, output_path, meta):
     logging.info(f"Поиск шаблона в: {TEMPLATES_DIR}")
     env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
     try:
@@ -146,6 +182,8 @@ def render_html(results, output_path):
         structured_results=results,
         generation_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         report_theme=theme,
+        config=CONFIG,
+        meta=meta,
     )
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -165,64 +203,56 @@ import importlib
 def show_in_terminal(results):
     console = Console(width=300)
 
-    for target, categories in results.items():
-        for category, sections in categories.items():
-            for subcat, entries in sections.items():
-                if subcat == "__meta__" or not isinstance(entries, list):
-                    continue
+    for category, modules in results.items():
+        for module_name, entries in modules.items():
+            if not isinstance(entries, list):
+                continue
 
-                for entry in entries:
-                    data = entry.get("data")
-                    module = entry.get("module")
+            for entry in entries:
+                data = entry.get("data")
+                module = entry.get("module")
 
-                    if isinstance(data, list) and all(
-                        isinstance(d, dict) for d in data
-                    ):
-                        column_order = None
-                        try:
-                            plugin_module = importlib.import_module(f"plugins.{module}")
-                            if hasattr(plugin_module, "get_column_order"):
-                                column_order = plugin_module.get_column_order()
-                        except Exception:
-                            pass
+                if isinstance(data, list) and all(isinstance(d, dict) for d in data):
+                    column_order = None
+                    try:
+                        plugin_module = importlib.import_module(f"plugins.{module}")
+                        if hasattr(plugin_module, "get_column_order"):
+                            column_order = plugin_module.get_column_order()
+                    except Exception:
+                        pass
 
-                        all_keys = [
-                            k
-                            for d in data
-                            for k in d.keys()
-                            if k not in ["severity", "created_at", "module"]
-                        ]
-                        keys = (
-                            [k for k in column_order if k in all_keys]
-                            if column_order
-                            else list(dict.fromkeys(all_keys))
+                    all_keys = [
+                        k
+                        for d in data
+                        for k in d.keys()
+                        if k not in ["severity", "created_at", "module"]
+                    ]
+                    keys = (
+                        [k for k in column_order if k in all_keys]
+                        if column_order
+                        else list(dict.fromkeys(all_keys))
+                    )
+
+                    table = Table(
+                        title=f"[bold blue]{category} / {module}", show_lines=True
+                    )
+                    for k in keys:
+                        table.add_column(
+                            k.replace("_", " ").title(), overflow="fold", max_width=100
                         )
-
-                        table = Table(
-                            title=f"[bold blue]{target} — {category} / {module}",
-                            show_lines=True,
-                        )
-                        for k in keys:
-                            table.add_column(
-                                k.replace("_", " ").title(),
-                                overflow="fold",
-                                max_width=100,
-                            )
-                        for d in data:
-                            table.add_row(*[str(d.get(k, "")) for k in keys])
-                        console.print(table)
-
-                    else:
-                        table = Table(
-                            title=f"[bold blue]{target} — {category} / {module}"
-                        )
-                        table.add_column("Data", overflow="fold")
-                        table.add_row(json.dumps(data, ensure_ascii=False)[:1000])
-                        console.print(table)
+                    for d in data:
+                        table.add_row(*[str(d.get(k, "")) for k in keys])
+                    console.print(table)
+                else:
+                    table = Table(title=f"[bold blue]{category} / {module}")
+                    table.add_column("Data", overflow="fold")
+                    table.add_row(json.dumps(data, ensure_ascii=False)[:1000])
+                    console.print(table)
 
 
 def main(format=None, timestamp=None):
-    results = sort_categories(load_and_categorize_results())
+    raw_results, meta = load_and_categorize_results()
+    results = sort_categories_by_priority(raw_results)
     if not timestamp:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -263,7 +293,7 @@ def main(format=None, timestamp=None):
             return
 
         html_output = os.path.join(OUTPUT_DIR, f"report_{timestamp}.html")
-        render_html(results, html_output)
+        render_html(results, html_output, meta)
 
         if "pdf" in formats:
             pdf_output = os.path.join(OUTPUT_DIR, f"report_{timestamp}.pdf")

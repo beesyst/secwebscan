@@ -14,36 +14,46 @@
 <body>
     <h1>SecWebScan Report</h1>
 
-    {% for target, categories in structured_results.items() %}
-    <div class="module">
-        <p><strong>Target:</strong> {{ target }}</p>
-        <p><strong>Other addresses:</strong>
-            {{ categories["__meta__"].mac if categories.get("__meta__") and categories["__meta__"].mac else "Unknown" }}
-        </p>
-        <p><strong>Time:</strong>
-            {{ categories["__meta__"].created_at if categories.get("__meta__") and categories["__meta__"].created_at
-            else "Unknown" }}
-        </p>
+    {% set scan_target = config["scan_config"].get("target_domain", "") %}
+    {% set resolved_ip = config["scan_config"].get("target_ip", "") %}
 
-        {% for category, subcats in categories.items() %}
-        {% if category != "__meta__" %}
+    <div class="module">
+        {% if resolved_ip %}
+        <p><strong>IP:</strong> {{ resolved_ip }}</p>
+        {% endif %}
+        {% if scan_target %}
+        <p><strong>Domain:</strong> {{ scan_target }}</p>
+        {% endif %}
+        <p><strong>Time:</strong> {{ meta.created_at or "Unknown" }}</p>
+    </div>
+
+    {% for category, modules in structured_results.items() %}
+    <div class="module">
         <h2>{{ category }}</h2>
-        {% for subcategory, entries in subcats.items() %}
-        {% if entries and entries[0]["data"] is iterable and entries[0]["data"] is not string and entries[0]["data"][0]
-        is mapping %}
-        <h3>{{ subcategory }}</h3>
+
+        {% for module_name, entries in modules.items() %}
+        <h3>{{ module_name }}</h3>
 
         {% set exclude_keys = ["source", "severity", "created_at", "module"] %}
+        {% if entries and entries[0]["data"] is iterable and entries[0]["data"] is not string and entries[0]["data"][0]
+        is mapping %}
         {% set all_keys = entries[0]["data"][0].keys() | reject("in", exclude_keys) | list %}
-        {% set module = entries[0]["module"] %}
-        {% set column_order = namespace(keys=all_keys) %}
-
-        {% if module == "nmap" %}
-        {% set column_order.keys = [
-        "cpe", "port", "extra", "state", "reason", "product", "version", "protocol", "service_name", "script_output"
-        ] | select("in", all_keys) | list %}
+        {% else %}
+        {% set all_keys = [] %}
         {% endif %}
 
+        {% set column_order = namespace(keys=all_keys) %}
+        {% if module_name == "nmap" %}
+        {% set column_order.keys = ["cpe", "port", "extra", "state", "reason", "product", "version", "protocol",
+        "service_name", "script_output"] | select("in", all_keys) | list %}
+        {% elif module_name == "nikto" %}
+        {% set column_order.keys = ["id", "msg", "url", "method"] | select("in", all_keys) | list %}
+        {% elif module_name == "dig" %}
+        {% set column_order.keys = ["ttl", "data", "name", "type", "target", "section"] | select("in", all_keys) | list
+        %}
+        {% endif %}
+
+        {% if column_order.keys %}
         <table>
             <thead>
                 <tr>
@@ -63,10 +73,7 @@
             </tbody>
         </table>
         {% else %}
-        <h3>{{ subcategory }}</h3>
-        <pre>{{ entries[0]["data"] }}</pre>
-        {% endif %}
-        {% endfor %}
+        <pre>{{ entries[0]["data"] | tojson(indent=2) }}</pre>
         {% endif %}
         {% endfor %}
     </div>
