@@ -6,7 +6,7 @@
 
 ## ⚙️ Key Features
 
-- **Plugin support** — 2 tools integrated.  
+- **Plugin support** — 5 tools integrated.  
 - **Plug-and-Play architecture** — each tool is a separate parser module.  
 - **PostgreSQL output** and report rendering from the database.  
 - **Tool profiles** — choose scan level per tool.  
@@ -171,7 +171,7 @@ All parameters are set in `config.json`:
 | File/report permission control (`chown`)                     |                                           |                                               |
 | Auto-opening HTML report after generation                    |                                           |                                               |
 
-## 💰 Donations
+## 💰 Donate
 
 - **USDT (TRC20)**/**USDC (TRC20)**: `TUQj3sguQjmKFJEMotyb3kERVgnfvhzG7o`
 - **SOL (Solana)**: `6VA9oJbkszteTZJbH6mmLioKTSq4r4E3N1bsoPaxQgr4`
