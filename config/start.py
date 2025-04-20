@@ -219,6 +219,10 @@ def start_secwebscan_container():
         f"{os.path.join(ROOT_DIR, 'reports')}:/reports",
         "-v",
         f"{os.path.join(ROOT_DIR, 'plugins')}:/plugins",
+        "-v",
+        "/etc/timezone:/etc/timezone:ro",
+        "-v",
+        "/etc/localtime:/etc/localtime:ro",
     ]
 
     success = run_command_with_spinner(

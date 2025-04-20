@@ -25,5 +25,8 @@ RUN python3 /tmp/install_plugins.py && \
     chmod +x /tmp/tools_install.sh && \
     bash /tmp/tools_install.sh
 
+ENV TZ=UTC
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 COPY . /secwebscan
 WORKDIR /secwebscan
