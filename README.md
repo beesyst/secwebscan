@@ -31,14 +31,15 @@
 - **Rich** — terminal tables  
 - **WeasyPrint** — PDF generation
 
-### Integrated Tools:
+### Integrated Tools
+
 - **nmap** — a powerful network scanner and analyzer.  
 - **nikto** — a web server scanner to detect vulnerabilities.  
 - **dig** — CLI tool for DNS queries.
 
 ## 🖧 Architecture
 
-### System Components:
+### System Components
 
 1. **Plugins** — active scanning tools (`nmap`, `nikto`) saving results to `results/`.  
 2. **Collector (`collector.py`)** — parses tool outputs using parsers in `plugins/*.py`, saves structured data in PostgreSQL.  
@@ -156,7 +157,7 @@ All parameters are set in `config.json`:
 | `purge_on_start` | `true`                | Empties the database before scan                                       | Keeps previous results in DB                     |
 | `report_theme`   | `"dark"`              | Uses dark mode in HTML/PDF reports                                     | `"light"` — light theme                         |
 
-## 🔮 Roadmap
+## 🗺️ To-Do
 
 | **Done**                        | **Planned**                              |
 |-------------------------------|-----------------------------------------|
