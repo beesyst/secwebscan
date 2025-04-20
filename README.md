@@ -159,13 +159,17 @@ All parameters are set in `config.json`:
 
 ## 🗺️ To-Do
 
-| **Done**                        | **Planned**                              |
-|-------------------------------|-----------------------------------------|
-| DB-based reporting            | PDF reports                             |
-| Async plugin execution        | CI pipeline                             |
-| Tested on Ubuntu 24.04        | Prometheus / Grafana integration        |
-| Flexible config via config.json | Proxy support                         |
-|                               | New tool support                        |
+| **Completed**                                                | **In Development**                        | **Planned**                                  |
+|--------------------------------------------------------------|-------------------------------------------|----------------------------------------------|
+| Reports from PostgreSQL (HTML, Terminal)                     | Proxy integration (Tor / Chain)           | PDF reports                                  |
+| Asynchronous plugin execution                                | Prometheus / Grafana integration          | CI pipeline (autostart & tests)              |
+| Support for nmap, nikto, dig, nuclei                         | HTML report template refactoring          | Support for new scanners (ffuf, httpx, etc.) |
+| Flexible configuration via `config.json`                     | Expansion of scan complexity levels       | Telegram alert integration                    |
+| Log and report cleanup via config flags                      | Scanner update check before run           | Parallel result analysis                      |
+| Static report structure with category grouping               |                                           | Task manager integration (Jira, GitLab)       |
+| Light/dark theme support for HTML reports via `config`       |                                           | Web interface for running and viewing reports |
+| File/report permission control (`chown`)                     |                                           |                                               |
+| Auto-opening HTML report after generation                    |                                           |                                               |
 
 ## 💰 Donations
 
