@@ -9,8 +9,8 @@
   },
   "docker_network": "secwebscan_network",
   "scan_config": {
-    "target_ip": "44.228.249.3",
-    "target_domain": "testphp.vulnweb.com",
+    "target_ip": "64.227.103.24",
+    "target_domain": "honey.scanme.sh",
     "report_formats": ["terminal", "html"],
     "open_report": true,
     "clear_reports": true,
@@ -124,7 +124,7 @@
         "go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
         "cp /root/go/bin/nuclei /usr/local/bin/nuclei"
       ],
-      "command": "nuclei {args} -u http://{target} -json -o {stdout}",
+      "command": "nuclei {args} -u http://{target} -jsonl -o {stdout} -t /root/nuclei-templates",
       "output": "results/nuclei.json",
       "parser": "json",
       "level": "easy",
