@@ -1,7 +1,9 @@
 import argparse
+import importlib
 import json
 import logging
 import os
+import textwrap
 from collections import OrderedDict, defaultdict
 from datetime import datetime
 
@@ -197,7 +199,12 @@ def generate_pdf(html_path, pdf_path):
     logging.info(f"PDF-отчет создан: {pdf_path}")
 
 
-import importlib
+def wrap_cell(value, width=80):
+    return "\n".join(
+        textwrap.wrap(
+            str(value), width=width, break_long_words=True, replace_whitespace=False
+        )
+    )
 
 
 def show_in_terminal(results):
@@ -238,10 +245,14 @@ def show_in_terminal(results):
                     )
                     for k in keys:
                         table.add_column(
-                            k.replace("_", " ").title(), overflow="fold", max_width=100
+                            k.replace("_", " ").title(), overflow="fold", max_width=40
                         )
+
                     for d in data:
-                        table.add_row(*[str(d.get(k, "")) for k in keys])
+                        table.add_row(
+                            *[wrap_cell(d.get(k, ""), width=40) for k in keys]
+                        )
+
                     console.print(table)
                 else:
                     table = Table(title=f"[bold blue]{category} / {module}")
