@@ -41,13 +41,24 @@
 
 ### System Components
 
-1. **Plugins** — active scanning tools (`nmap`, `nikto`) saving results to `results/`.  
-2. **Collector (`collector.py`)** — parses tool outputs using parsers in `plugins/*.py`, saves structured data in PostgreSQL.  
-3. **PostgreSQL DB** — centralized scan result storage.  
-4. **Report Generator (`report_generator.py`)** — builds reports in TERMINAL, HTML, and PDF formats.  
-5. **Docker Environment** — fully isolated (DB, core, tools).  
-6. **Configuration Module** — adjustable via `config/config.json` (targets, plugins, scan level, theme, etc.).  
-7. **`start.py`** — main launch script that automates the full scan/report pipeline.
+1. **Plugins (`plugins/*.py`)** — wrapper modules for CLI tools (e.g., `nmap`, `nikto`). Each plugin implements the following functions:
+   - `scan()` — runs the scanner and saves the path to the result file (`.xml`, `.json`);
+   - `parse()` — parses the results;
+   - `merge_entries()` — merges data by IP and Domain into `source: "Both"`;
+   - `get_column_order()` and `get_wide_fields()` — configure table column order and visual formatting.
+2. **Runner (`plugin_runner.py`)** — launches plugins and saves the paths to their results in a temporary JSON (`/tmp/temp_files_*.json`) without storing the actual file content.
+3. **Collector (`collector.py`)** — loads file paths, calls `parse()` / `merge_entries()`, filters out uninformative entries, and stores the result in the `results` table.
+4. **Database (PostgreSQL)** — centralized storage for all results; all plugins write to a single `results` table with a `plugin` field for identification.
+5. **Report Generator (`report_generator.py`)** — retrieves data from the database, groups it by category, and visualizes it as:
+   - terminal report (using rich),
+   - HTML (Jinja2 + CSS),
+   - PDF (via WeasyPrint).
+6. **Configuration Module (`config/config.json`)** — defines scanning targets (`target_ip`, `target_domain`), active plugins, scan levels, report formats, theme (`light` / `dark`), and behavior (`open_report`, `clear_db`, etc.).
+7. **Startup Wrapper (`start.py`)** — single entry point that orchestrates Docker environment setup, database launch, scanner execution, data collection, and report generation with progress indicators.
+8. **Docker Environment** — isolated and fully self-contained environment:
+   - `secwebscan_base` — container with all scanners and logic,
+   - `postgres` — separate container for the database,
+   - `secwebscan_network` — bridge network connecting the components.
 
 ### Project Structure
 
@@ -77,7 +88,6 @@ secwebscan/
 │   ├── nmap.py              # Nmap parser
 │   └── nikto.py             # Nikto parser
 ├── reports/                 # Generated HTML/PDF reports
-├── results/                 # Raw XML/JSON scan output
 ├── templates/               # Jinja2 report templates
 │   ├── css/                 # CSS files
 │   └── report.html.j2       # HTML report template
@@ -88,50 +98,58 @@ secwebscan/
 
 ## ⚙️ Pipeplan: How it Works
 
-### System Startup
+### System Launch
 
-1. Run system via `start.sh`.
-2. Check Docker and `secwebscan_network`.
-3. Start PostgreSQL container (if inactive).
-4. Build `secwebscan-base` image (if missing).
-5. Launch `secwebscan_base` container with volumes.
-6. Run `plugin_runner.py` to execute scans.
-7. Run `collector.py` to parse/save to DB.
-8. Generate reports: `terminal`, `html`, `pdf`.
+1. The system starts via `start.sh`.
+2. Checks for Docker and the `secwebscan_network`.
+3. Launches the PostgreSQL container (if not already running).
+4. Builds the `secwebscan-base` image (if not built yet).
+5. Starts the `secwebscan_base` container with mounted folders.
+6. Runs `plugin_runner.py` to scan targets.
+7. Saves result paths to a temporary JSON file.
+8. Launches `collector.py` to process results and write to the database.
+9. Generates reports: `terminal`, `html`, `pdf`.
 
-### Plugin Workflow:
+### Plugin Operation
 
-1. `plugin_runner.py` reads `config.json` for enabled modules.
-2. Executes each scanner (e.g. `nmap`) and saves to `results/`.
-3. Calls `parse()` from each plugin.
+1. `plugin_runner.py` reads `config.json` and detects active plugins.
+2. Triggers the `scan()` function in each plugin (`plugins/*.py`).
+3. Saves result paths (`XML`/`JSON`) into a temporary file.
+4. Calls the `parse()` function for each plugin to extract data.
 
 ### Data Collection (`collector.py`)
 
-1. Connect to DB.
-2. Clear old records (if `purge_on_start` is true).
-3. Load parser from `plugins/*.py`.
-4. Parse XML/JSON.
-5. Store structured data to `results` or `{plugin}_results`.
+1. The collector connects to the database.
+2. Clears the `results` table if `"clear_db": true` is enabled.
+3. Loads the plugin parser from `plugins/*.py`.
+4. Processes all temporary files (`temp_files_*.json`).
+5. Calls `parse()` and `merge_entries()`.
+6. Filters out empty or non-informative entries.
+7. Writes structured data into the unified `results` table.
 
-### Report Generation
+### Report Generation (`report_generator.py`)
 
-1. `report_generator.py` pulls from DB.
-2. Uses Jinja2 templates to generate:
-   - Terminal report (via `rich`)
-   - HTML (`report.html.j2`)
-   - PDF (via WeasyPrint)
-3. Auto-opens HTML report if `"open_report": true`.
-4. Supports themes: `dark` / `light`.
+1. Fetches data from the `results` table.
+2. Automatically detects categories (`Network Security`, `Application Security`, etc.).
+3. For each plugin, loads column order (`get_column_order()`) and wide fields (`get_wide_fields()`).
+4. Generates:
+   - Terminal report (`rich` tables),
+   - HTML report (via `Jinja2` template `report.html.j2`),
+   - PDF report (based on HTML via `WeasyPrint`).
+5. The HTML report opens automatically in the browser if `"open_report": true` in `config.json`.
+6. Supports theme selection: `"light"` or `"dark"`.
 
 ### Nmap Example
 
-1. `nmap` enabled in `config.json` with level `middle`.
-2. Runs with `-T4 -sS -sV -Pn --open`.
-3. `plugins/nmap.py` parses XML.
-4. Data saved to `nmap_results`.
-5. `report_generator.py` renders final reports.
-
-> All directories are volume-mounted for sync and portability.
+1. The `config.json` specifies the `nmap` module with a difficulty level (e.g., `middle`).
+2. Nmap is launched with arguments for that level (`-T4 -sS -sV -Pn --open`, etc.).
+3. Scans for both IP and Domain are saved separately.
+4. The `nmap.py` plugin:
+   - Parses the XML output,
+   - Merges IP/Domain results using `merge_entries()`,
+   - Passes the data to the collector.
+5. All records are added to the `results` table.
+6. `report_generator.py` displays the results in terminal, HTML, and PDF with proper column ordering.
 
 ## ▶️ Installation and Launch
 
@@ -154,7 +172,7 @@ All parameters are set in `config.json`:
 | `open_report`    | `true`                | Auto-opens HTML/PDF in browser                                         | Doesn't open automatically                       |
 | `clear_logs`     | `true`                | Clears `host.log` and `container.log` on launch                        | Logs persist and accumulate                      |
 | `clear_reports`  | `true`                | Removes old reports from `reports/`                                    | Keeps old reports                                |
-| `purge_on_start` | `true`                | Empties the database before scan                                       | Keeps previous results in DB                     |
+| `clear_db` | `true`                | Empties the database before scan                                       | Keeps previous results in DB                     |
 | `report_theme`   | `"dark"`              | Uses dark mode in HTML/PDF reports                                     | `"light"` — light theme                         |
 
 ## 🗺️ To-Do

@@ -1,17 +1,21 @@
+import os
+import sys
+
+sys.path.insert(0, "/")
+
 import asyncio
 import importlib.util
 import json
 import logging
-import os
 import shutil
-from datetime import datetime
+
+from core.logger_container import setup_container_logger
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
+PLUGINS_DIR = os.path.join(ROOT_DIR, "plugins")
 
-from logger_container import setup_container_logger
-
-with open(CONFIG_PATH, "r") as f:
+with open(CONFIG_PATH) as f:
     CONFIG = json.load(f)
 
 setup_container_logger()
@@ -21,10 +25,17 @@ SCAN_CONFIG = CONFIG.get("scan_config", {})
 TARGET_IP = SCAN_CONFIG.get("target_ip")
 TARGET_DOMAIN = SCAN_CONFIG.get("target_domain")
 
+TEMP_FILES_PATH = os.getenv("TEMP_FILES_PATH")
+generated_temp_paths = []
+
 if not TARGET_IP and not TARGET_DOMAIN:
     raise ValueError(
         "Не указан ни target_ip, ни target_domain в конфиге. Укажите хотя бы один."
     )
+
+if not TEMP_FILES_PATH:
+    logging.critical("Переменная TEMP_FILES_PATH не установлена в окружении!")
+    exit(1)
 
 
 def is_tool_installed(tool_name):
@@ -47,15 +58,13 @@ async def install_plugin(plugin):
         if not is_root:
             cmd = f"sudo {cmd}"
 
-        logging.info(f"➡ Выполняется: {cmd}")
+        logging.info(f"Выполняется команда: {cmd}")
         process = await asyncio.create_subprocess_shell(
             cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
-        if stdout:
-            logging.debug(f"{name} STDOUT:\n{stdout.decode().strip()}")
         if process.returncode != 0:
             logging.error(
                 f"Установка {name} не удалась на команде: {cmd}\n{stderr.decode().strip()}"
@@ -66,13 +75,11 @@ async def install_plugin(plugin):
     return True
 
 
-async def run_tool(plugin):
+async def run_plugin(plugin):
     name = plugin["name"]
-    output_path = os.path.join(ROOT_DIR, plugin["output"])
-    parser_type = plugin.get("parser", "json")
 
     if not plugin.get("enabled", False):
-        logging.info(f"{name} отключен в конфиге. Пропускаем.")
+        logging.info(f"Плагин {name} отключен в конфиге. Пропускаем.")
         return
 
     ip_required = plugin.get("ip_required", False)
@@ -85,85 +92,58 @@ async def run_tool(plugin):
         logging.info(f"{name} требует домен, но он не указан. Пропускаем.")
         return
 
-    TARGET = TARGET_IP if ip_required else TARGET_DOMAIN
-
-    if parser_type == "xml" and os.path.exists(output_path):
-        logging.info(f"Удаляем старый XML: {output_path}")
-        os.remove(output_path)
-
     success = await install_plugin(plugin)
     if not success:
         return
 
-    level = plugin.get("level", "easy")
-    level_args = plugin.get("levels", {}).get(level, {}).get("args", "")
-
-    command_template = plugin.get("command", "")
-    command = command_template.replace("{args}", level_args).replace("{target}", TARGET)
-    if "{stdout}" in command:
-        command = command.replace("{stdout}", output_path)
+    plugin_path = os.path.join(PLUGINS_DIR, f"{name}.py")
+    if not os.path.exists(plugin_path):
+        logging.error(f"Файл плагина {plugin_path} не найден!")
+        return
 
     try:
-        if parser_type == "python" or not command_template:
-            plugin_path = os.path.join(ROOT_DIR, "plugins", f"{name}.py")
-            if not os.path.exists(plugin_path):
-                logging.error(f"Файл плагина {plugin_path} не найден!")
-                return
+        spec = importlib.util.spec_from_file_location(name, plugin_path)
+        loaded_plugin = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(loaded_plugin)
 
-            spec = importlib.util.spec_from_file_location(name, plugin_path)
-            plugin_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(plugin_module)
+        if hasattr(loaded_plugin, "scan"):
+            logging.info(f"Запуск функции scan() из плагина {name}...")
+            temp_paths = loaded_plugin.scan(plugin, CONFIG, debug=False)
 
-            logging.info(f"Запуск Python-плагина {name}...")
-            json_file = plugin_module.scan_with_dig()
-            logging.info(f"{name} завершен. JSON сохранён в {json_file}")
-            return
+            if isinstance(temp_paths, list):
+                generated_temp_paths.extend(temp_paths)
+            elif isinstance(temp_paths, str):
+                generated_temp_paths.append(temp_paths)
 
-        logging.info(f"Запуск {name} (уровень: {level}): {command}")
-        process = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await process.communicate()
-
-        if process.returncode != 0:
-            logging.error(f"{name} завершился с ошибкой: {stderr.decode().strip()}")
-            return
-
-        if parser_type in ["xml", "json"]:
-            logging.info(f"{name} завершен. Результат сохранён в {output_path}")
-            return
-
-        try:
-            result = json.loads(stdout.decode())
-        except Exception:
-            result = [
-                {
-                    "target": TARGET,
-                    "type": name,
-                    "severity": "info",
-                    "data": stdout.decode().strip(),
-                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                }
-            ]
-
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2)
-        logging.info(f"{name} завершен. JSON сохранён в {output_path}")
-
+            logging.info(f"Плагин {name} успешно завершил работу.")
+        else:
+            logging.error(f"Плагин {name} не содержит функцию scan(). Пропускаем.")
     except Exception as e:
-        logging.exception(f"Ошибка запуска {name}: {e}")
+        logging.exception(f"Ошибка при запуске плагина {name}: {e}")
 
 
 async def main():
-    tasks = [run_tool(plugin) for plugin in PLUGINS if plugin.get("enabled")]
+    tasks = [run_plugin(plugin) for plugin in PLUGINS if plugin.get("enabled")]
     await asyncio.gather(*tasks)
 
     for handler in logging.getLogger().handlers:
         handler.flush()
 
+    return generated_temp_paths
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    paths = asyncio.run(main())
+
+    for path in paths:
+        print(f"🔹 Создан файл: {path}")
+
+    try:
+        with open(TEMP_FILES_PATH, "w", encoding="utf-8") as f:
+            json.dump(paths, f, ensure_ascii=False)
+        print(f"✅ Сохранены пути временных файлов: {TEMP_FILES_PATH}")
+        logging.info(f"Сохранены пути временных файлов: {TEMP_FILES_PATH}")
+    except Exception as e:
+        print(f"❌ Ошибка записи TEMP_FILES_PATH: {e}")
+        logging.error(f"Ошибка записи TEMP_FILES_PATH: {e}")
+        exit(1)

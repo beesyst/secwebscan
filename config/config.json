@@ -15,7 +15,7 @@
     "open_report": true,
     "clear_reports": true,
     "clear_logs": true,
-    "purge_on_start": true,
+    "clear_db": true,
     "report_theme": "dark"
   },
   "plugins": [
@@ -23,12 +23,9 @@
       "name": "nmap",
       "enabled": true,
       "ip_required": true,
-      "vhost_required": false,
+      "vhost_required": true,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
-      "command": "nmap {args} {target} -oX {stdout}",
-      "output": "results/nmap.xml",
-      "parser": "xml",
       "level": "easy",
       "levels": {
         "custom": {
@@ -50,7 +47,7 @@
     },
     {
       "name": "nikto",
-      "enabled": true,
+      "enabled": false,
       "ip_required": false,
       "vhost_required": true,
       "category": "Application Security",
@@ -87,7 +84,7 @@
     },
     {
       "name": "dig",
-      "enabled": true,
+      "enabled": false,
       "ip_required": false,
       "vhost_required": true,
       "category": "DNS Health",
@@ -116,7 +113,7 @@
     },
     {
       "name": "nuclei",
-      "enabled": true,
+      "enabled": false,
       "ip_required": false,
       "vhost_required": true,
       "category": "Vulnerability Scan",

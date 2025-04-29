@@ -1,8 +1,8 @@
-import os
-import psycopg2
 import json
+import os
 
-# Конфигурация БД из переменных среды
+import psycopg2
+
 DB = {
     "user": os.getenv("POSTGRES_USER", "secweb_user"),
     "password": os.getenv("POSTGRES_PASSWORD", "secweb_pass"),
@@ -18,7 +18,7 @@ CONFIG_PATH = os.path.join(
 with open(CONFIG_PATH, "r") as f:
     CONFIG = json.load(f)
 
-PURGE_ON_START = CONFIG["proxy_management"].get("purge_on_start", False)
+PURGE_ON_START = CONFIG.get("scan_config", {}).get("purge_on_start", False)
 
 
 def connect():

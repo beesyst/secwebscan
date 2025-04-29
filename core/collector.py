@@ -2,18 +2,22 @@ import importlib.util
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 
+sys.path.insert(0, "/")
+
 import psycopg2
-from logger_container import setup_container_logger
+from core.logger_container import setup_container_logger
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = "/config/config.json"
-
-with open(CONFIG_PATH, "r") as config_file:
-    CONFIG = json.load(config_file)
+CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
+PLUGINS_DIR = os.path.join(ROOT_DIR, "plugins")
 
 setup_container_logger()
+
+with open(CONFIG_PATH) as config_file:
+    CONFIG = json.load(config_file)
 
 DB_CONFIG = CONFIG["database"]
 PLUGINS = CONFIG.get("plugins", [])
@@ -28,106 +32,222 @@ def connect_to_db():
             host=DB_CONFIG["POSTGRES_HOST"],
             port=DB_CONFIG["POSTGRES_PORT"],
         )
-        logging.info("Успешное подключение к базе данных")
+        logging.info("Успешное подключение к базе данных.")
         return conn
     except psycopg2.Error as e:
-        logging.error(f"Ошибка подключения к БД: {e}")
+        logging.critical(f"Ошибка подключения к БД: {e}")
         exit(1)
 
 
 def purge_results(cursor):
-    logging.info("Очистка таблицы results...")
     try:
         cursor.execute("DELETE FROM results;")
-        logging.info("Таблица results очищена.")
+        logging.info("Таблица results успешно очищена.")
     except psycopg2.Error as e:
-        logging.warning(f"Не удалось очистить results: {e}")
+        logging.critical(f"Ошибка при очистке таблицы results: {e}")
+        exit(1)
 
 
-def load_plugin_parser(module_name):
-    plugin_path = os.path.join("/plugins", f"{module_name}.py")
+def load_plugin_parser(plugin_name):
+    plugin_path = os.path.join(PLUGINS_DIR, f"{plugin_name}.py")
     if not os.path.exists(plugin_path):
-        logging.error(f"Не найден файл парсера: {plugin_path}")
+        logging.error(f"Файл парсера {plugin_path} не найден.")
         return None
 
-    spec = importlib.util.spec_from_file_location(module_name, plugin_path)
-    plugin = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(plugin)
-    return plugin
-
-
-def process_module_results(cursor, module):
-    if not module.get("enabled", False):
-        return 0
-
-    module_name = module["name"]
-    output_path = f"/{module['output'].lstrip('/')}"
-
-    if not os.path.exists(output_path):
-        logging.warning(f"Результат {module_name} не найден: {output_path}")
-        return 0
-
-    plugin_parser = load_plugin_parser(module_name)
-    if not plugin_parser or not hasattr(plugin_parser, "parse"):
-        logging.error(f"Модуль {module_name} не содержит функцию parse")
-        return 0
-
     try:
-        results = plugin_parser.parse(output_path)
+        spec = importlib.util.spec_from_file_location(plugin_name, plugin_path)
+        plugin = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plugin)
+        return plugin
     except Exception as e:
-        logging.error(f"Ошибка при обработке {module_name}: {e}")
-        return 0
+        logging.error(f"Ошибка загрузки парсера {plugin_name}: {e}")
+        return None
 
-    table_name = "results"
-    added = 0
 
-    for item in results:
-        try:
-            timestamp = datetime.now()
-            item["created_at"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            item["module"] = module_name
+def is_meaningful_entry(entry, important_fields):
+    return not all(
+        str(entry.get(k, "-")).strip() in ["-", "", "None", "null", "0"]
+        for k in important_fields
+    )
 
-            detected_category = module.get("category", "General Info")
 
-            cursor.execute(
-                f"""
-                INSERT INTO {table_name} (target, module, category, severity, data, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    item.get("target", "unknown"),
-                    module_name,
-                    detected_category,
-                    item.get("severity", "info"),
-                    json.dumps(item.get("data", {}), ensure_ascii=False),
-                    timestamp,
-                ),
-            )
-            added += 1
-        except psycopg2.Error as e:
-            logging.warning(f"Ошибка вставки в {table_name}: {e}")
+def process_temp_files(cursor, temp_files):
+    total_added = 0
+    grouped_files = {}
+
+    ip_target = CONFIG.get("scan_config", {}).get("target_ip", "unknown")
+    domain_target = CONFIG.get("scan_config", {}).get("target_domain", "unknown")
+
+    for temp_file_info in temp_files:
+        plugin_name = temp_file_info.get("plugin")
+        if not plugin_name:
+            logging.warning(f"Некорректные данные в буфере: {temp_file_info}")
             continue
 
-    logging.info(f"Добавлено {added} записей в {table_name}")
-    return added
+        grouped_files.setdefault(plugin_name, []).append(temp_file_info)
+
+    for plugin_name, files in grouped_files.items():
+        plugin_parser = load_plugin_parser(plugin_name)
+        if not plugin_parser:
+            logging.error(f"Парсер для плагина {plugin_name} не загружен. Пропускаем.")
+            continue
+
+        if not hasattr(plugin_parser, "parse"):
+            logging.error(
+                f"Плагин {plugin_name} не содержит функцию parse(). Пропускаем."
+            )
+            continue
+
+        important_fields = []
+        if hasattr(plugin_parser, "get_important_fields"):
+            important_fields = plugin_parser.get_important_fields()
+
+        try:
+            results = []
+            if hasattr(plugin_parser, "merge_entries") and len(files) > 1:
+                logging.info(
+                    f"Объединение данных через merge_entries() для {plugin_name}..."
+                )
+
+                ip_file = next((f for f in files if f["source"].lower() == "ip"), None)
+                domain_file = next(
+                    (f for f in files if f["source"].lower() == "domain"), None
+                )
+
+                if not ip_file or not domain_file:
+                    logging.error(
+                        f"Не найдены оба файла IP и Domain для {plugin_name}. Пропускаем объединение."
+                    )
+                    continue
+
+                ip_data = plugin_parser.parse(ip_file["path"], source_label="IP")
+                domain_data = plugin_parser.parse(
+                    domain_file["path"], source_label="Domain"
+                )
+
+                merged_data = plugin_parser.merge_entries(ip_data, domain_data)
+
+                for data in merged_data:
+                    source = data.get("source", "unknown")
+                    data["target"] = (
+                        ip_target
+                        if source == "IP"
+                        else (
+                            domain_target if source in ["Domain", "Both"] else "unknown"
+                        )
+                    )
+                    if not important_fields or is_meaningful_entry(
+                        data, important_fields
+                    ):
+                        results.append(data)
+            else:
+                for f in files:
+                    parsed = plugin_parser.parse(f["path"], f.get("source", "unknown"))
+                    for entry in parsed:
+                        entry["target"] = (
+                            ip_target if f.get("source") == "IP" else domain_target
+                        )
+                        if not important_fields or is_meaningful_entry(
+                            entry, important_fields
+                        ):
+                            results.append(entry)
+
+        except Exception as e:
+            logging.error(f"Ошибка выполнения parse() для {plugin_name}: {e}")
+            continue
+
+        if not results:
+            logging.info(f"Нет данных для вставки из {plugin_name}.")
+            continue
+
+        for item in results:
+            try:
+                timestamp = datetime.now()
+                item["created_at"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                category = next(
+                    (
+                        p.get("category", "General Info")
+                        for p in PLUGINS
+                        if p["name"] == plugin_name
+                    ),
+                    "General Info",
+                )
+
+                cursor.execute(
+                    """
+                    INSERT INTO results (target, plugin, category, severity, data, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        item.get("target", "unknown"),
+                        plugin_name,
+                        category,
+                        item.get("severity", "info"),
+                        json.dumps(item, ensure_ascii=False),
+                        timestamp,
+                    ),
+                )
+                total_added += 1
+            except psycopg2.Error as e:
+                logging.warning(f"Ошибка вставки данных из {plugin_name}: {e}")
+                continue
+
+        logging.info(f"[{plugin_name}] Добавлено записей: {len(results)}")
+
+    return total_added
 
 
-def collect():
-    connection = connect_to_db()
-    cursor = connection.cursor()
+def collect(temp_files=None, purge_only=False):
+    try:
+        with connect_to_db() as conn:
+            with conn.cursor() as cursor:
+                if purge_only:
+                    logging.info("Режим очистки базы (--purge_only).")
+                    purge_results(cursor)
+                    return
 
-    if CONFIG.get("scan_config", {}).get("purge_on_start", False):
-        purge_results(cursor)
+                temp_files_path = os.environ.get("TEMP_FILES_PATH")
+                if not temp_files_path:
+                    if purge_only:
+                        logging.info(
+                            "Режим очистки базы (--purge_only). TEMP_FILES_PATH не требуется."
+                        )
+                    else:
+                        logging.error("Не указана переменная среды TEMP_FILES_PATH.")
+                    return
 
-    total_added = 0
-    for module in PLUGINS:
-        total_added += process_module_results(cursor, module)
+                if not os.path.exists(temp_files_path):
+                    logging.error(f"Файл {temp_files_path} не найден.")
+                    return
 
-    connection.commit()
-    cursor.close()
-    connection.close()
+                try:
+                    with open(temp_files_path, "r") as f:
+                        temp_files = json.load(f)
+                    logging.info(
+                        f"Загружено {len(temp_files)} временных файлов из {temp_files_path}."
+                    )
+                except Exception as e:
+                    logging.error(f"Ошибка загрузки временных файлов: {e}")
+                    return
 
-    logging.info(f"Завершено. Всего добавлено записей: {total_added}")
+                try:
+                    os.remove(temp_files_path)
+                    logging.info(f"Файл {temp_files_path} успешно удалён.")
+                except Exception as e:
+                    logging.warning(f"Не удалось удалить {temp_files_path}: {e}")
+
+                if not temp_files:
+                    logging.error("Список временных файлов пуст. Прерывание.")
+                    return
+
+                total_added = process_temp_files(cursor, temp_files)
+
+                logging.info(
+                    f"Сбор данных завершён. Всего добавлено: {total_added} записей."
+                )
+    except Exception as e:
+        logging.critical(f"Фатальная ошибка при сборе данных: {e}")
+        exit(1)
 
 
 if __name__ == "__main__":

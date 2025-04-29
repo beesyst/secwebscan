@@ -7,16 +7,19 @@ import threading
 import time
 from datetime import datetime
 
+TEMP_FILES_PATH = ""
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT_DIR)
+
+from core.logger_container import clear_container_log_if_needed
+from core.logger_host import setup_host_logger
+
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
 LOGS_PATH = os.path.join(ROOT_DIR, "logs", "host.log")
 
 with open(CONFIG_PATH, "r") as config_file:
     CONFIG = json.load(config_file)
-
-sys.path.insert(0, ROOT_DIR)
-from core.logger_container import clear_container_log_if_needed
-from core.logger_host import setup_host_logger
 
 setup_host_logger(CONFIG)
 clear_container_log_if_needed(CONFIG)
@@ -58,7 +61,6 @@ def run_command(command, cwd=None, hide_output=True):
 
 
 def run_command_with_spinner(command, prefix, cwd=None, hide_output=True):
-    # logging.info(f"{prefix}...")
     stop_event = threading.Event()
     spinner_thread = threading.Thread(target=spinner, args=(prefix, stop_event))
     spinner_thread.start()
@@ -121,7 +123,7 @@ def start_postgres():
         logging.info("PostgreSQL уже работает.")
         return
 
-    print("🗄️ PostgreSQL не найден. Запускаю контейнер...")
+    print("🗄️ PostgreSQL не найден. Собираю...")
     logging.info("Контейнер PostgreSQL не найден. Запуск...")
     run_command_with_spinner(
         "docker compose -f db/compose.yaml up --build -d",
@@ -161,13 +163,12 @@ def ensure_secwebscan_base_image():
         text=True,
     )
     if not result.stdout.strip():
-        print("📦 Образ secwebscan-base не найден. Начинаю сборку...")
+        print("📦 Образ secwebscan-base не найден. Собираю...")
         logging.info("Образ secwebscan-base не найден. Запуск сборки...")
         success = run_command_with_spinner(
             "docker build -t secwebscan-base -f docker/Dockerfile.base .",
             "⏳ Сборка образа",
             cwd=ROOT_DIR,
-            hide_output=True,
         )
         if not success:
             print("❌ Сборка образа завершилась с ошибкой.")
@@ -238,21 +239,62 @@ def start_secwebscan_container():
         logging.info("Контейнер secwebscan_base запущен успешно.")
 
 
+def purge_database():
+    if CONFIG.get("scan_config", {}).get("clear_db", False):
+        print("🧹 Очистка базы данных перед сканированием...")
+        logging.info("Очистка базы данных перед сканированием")
+        run_command(
+            "docker exec secwebscan_base python3 /core/collector.py --purge_only",
+            hide_output=False,
+        )
+    else:
+        logging.info("Флаг clear_db=false. Пропуск очистки базы.")
+
+
 def run_plugins():
     print("🔧 Запуск всех плагинов асинхронно...")
-    logging.info("Запуск всех плагинов через plugin_runner.py")
-    run_command_with_spinner(
-        "docker exec secwebscan_base python3 /core/plugin_runner.py",
-        "⏳ Плагины выполняются...",
+    logging.info("Запуск всех плагинов через docker exec plugin_runner.py")
+
+    cmd = f"docker exec -e TEMP_FILES_PATH={TEMP_FILES_PATH} secwebscan_base python3 /core/plugin_runner.py"
+
+    stop_event = threading.Event()
+    spinner_thread = threading.Thread(
+        target=spinner, args=("⏳ Плагины выполняются...", stop_event)
     )
+    spinner_thread.start()
+
+    result = subprocess.run(
+        cmd,
+        shell=True,
+        cwd=ROOT_DIR,
+    )
+
+    stop_event.set()
+    spinner_thread.join()
+
+    if result.returncode != 0:
+        print("❌ Ошибка выполнения плагинов")
+        logging.error("Ошибка выполнения плагинов.")
+        exit(1)
+
+    print("✅ Плагины успешно завершили выполнение.")
+    logging.info("Плагины завершили выполнение.")
 
 
 def run_collector():
     print("📥 Сбор результатов в БД...")
-    logging.info("Сбор результатов: запуск collector.py внутри контейнера")
-    run_command(
-        "docker exec secwebscan_base python3 /core/collector.py", hide_output=False
+    logging.info("Запуск collector.collect()")
+
+    cmd = f"docker exec -e TEMP_FILES_PATH={TEMP_FILES_PATH} secwebscan_base python3 /core/collector.py"
+
+    result = subprocess.run(
+        cmd,
+        shell=True,
     )
+
+    if result.returncode != 0:
+        print("❌ Ошибка выполнения collector.py")
+        logging.error("Ошибка выполнения collector.py")
 
 
 def generate_reports():
@@ -264,7 +306,7 @@ def generate_reports():
     html_report_name = f"report_{timestamp}.html"
     html_report_path = os.path.join(ROOT_DIR, "reports", html_report_name)
 
-    for fmt in formats:
+    for i, fmt in enumerate(formats):
         if fmt not in ["html", "pdf", "txt", "terminal"]:
             print(f"⚠️ Формат {fmt} не поддерживается. Пропускаем.")
             logging.warning(f"Неподдерживаемый формат отчета: {fmt}")
@@ -272,8 +314,11 @@ def generate_reports():
 
         print(f"📝 Генерация {fmt.upper()}...")
         logging.info(f"Генерация отчета в формате {fmt.upper()}...")
+
+        clear_flag = "--clear-reports" if i == 0 else ""
+
         success = run_command(
-            f"docker exec secwebscan_base python3 /core/report_generator.py --format {fmt} --timestamp {timestamp}",
+            f"docker exec secwebscan_base python3 /core/report_generator.py --format {fmt} --timestamp {timestamp} {clear_flag}",
             hide_output=False,
         )
 
@@ -306,9 +351,9 @@ def post_scan_chown():
             hide_output=False,
         )
         print(f"✅ Права на /reports обновлены: {user_id}:{group_id}")
-        logging.info(f"Изменены права доступа /reports на {user_id}:{group_id}")
+        logging.info(f"Изменены права доступа к /reports на {user_id}:{group_id}")
     except Exception as e:
-        print(f"⚠️ Ошибка при попытке сменить владельца отчётов: {e}")
+        print(f"⚠️ Ошибка при смене владельца отчётов: {e}")
         logging.warning(f"Не удалось изменить владельца отчётов: {e}")
 
 
@@ -320,6 +365,10 @@ def main():
     start_postgres()
     ensure_secwebscan_base_image()
     start_secwebscan_container()
+    purge_database()
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    global TEMP_FILES_PATH
+    TEMP_FILES_PATH = f"/tmp/temp_files_{timestamp}.json"
     run_plugins()
     run_collector()
     generate_reports()

@@ -9,37 +9,25 @@ BEGIN
 END
 $$;
 
--- Удаление устаревших таблиц
+-- Удаление старой таблицы results
 DROP TABLE IF EXISTS results;
-DROP TABLE IF EXISTS nmap_results;
 
--- Общая таблица
-CREATE TABLE IF NOT EXISTS results (
+-- Создание единой универсальной таблицы results
+CREATE TABLE results (
     id SERIAL PRIMARY KEY,
     target TEXT NOT NULL,
-    module TEXT NOT NULL,
+    plugin TEXT NOT NULL,
     category TEXT NOT NULL,
-    severity TEXT,
+    severity TEXT DEFAULT 'info',
     data JSONB NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Таблица под Nmap (расширенная)
-CREATE TABLE IF NOT EXISTS nmap_results (
-    id SERIAL PRIMARY KEY,
-    target TEXT NOT NULL,
-    ip TEXT,
-    hostname TEXT,
-    port INTEGER NOT NULL,
-    protocol TEXT NOT NULL,
-    service_name TEXT,
-    product TEXT,
-    version TEXT,
-    cpe TEXT,
-    state TEXT,
-    reason TEXT,
-    banner TEXT,
-    script_output TEXT,
-    data JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- Создание индекса на поле data для ускорения поиска внутри JSONB
+CREATE INDEX idx_results_data ON results USING GIN (data);
+
+-- Создание индекса на поле plugin для ускорения выборки по типу плагина
+CREATE INDEX idx_results_plugin ON results (plugin);
+
+-- Создание индекса на поле target для ускорения выборки по целям
+CREATE INDEX idx_results_target ON results (target);

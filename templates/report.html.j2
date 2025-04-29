@@ -34,7 +34,7 @@
         {% for module_name, entries in modules.items() %}
         <h3>{{ module_name }}</h3>
 
-        {% set exclude_keys = ["source", "severity", "created_at", "module"] %}
+        {% set exclude_keys = ["severity", "created_at", "plugin"] %}
         {% if entries and entries[0]["data"] is iterable and entries[0]["data"] is not string and entries[0]["data"][0]
         is mapping %}
         {% set all_keys = entries[0]["data"][0].keys() | reject("in", exclude_keys) | list %}
@@ -44,8 +44,10 @@
 
         {% set column_order = namespace(keys=all_keys) %}
         {% if module_name == "nmap" %}
-        {% set column_order.keys = ["cpe", "port", "extra", "state", "reason", "product", "version", "protocol",
-        "service_name", "script_output"] | select("in", all_keys) | list %}
+        {% set base_keys = ["source", "port", "protocol", "state", "reason", "service_name", "product", "version",
+        "extra",
+        "cpe", "script_output"] %}
+        {% set column_order.keys = base_keys | select("in", all_keys) | list %}
         {% elif module_name == "nikto" %}
         {% set column_order.keys = ["id", "msg", "url", "method"] | select("in", all_keys) | list %}
         {% elif module_name == "dig" %}
