@@ -135,13 +135,9 @@ async def main():
 if __name__ == "__main__":
     paths = asyncio.run(main())
 
-    for path in paths:
-        print(f"🔹 Создан файл: {path}")
-
     try:
         with open(TEMP_FILES_PATH, "w", encoding="utf-8") as f:
             json.dump(paths, f, ensure_ascii=False)
-        print(f"✅ Сохранены пути временных файлов: {TEMP_FILES_PATH}")
         logging.info(f"Сохранены пути временных файлов: {TEMP_FILES_PATH}")
     except Exception as e:
         print(f"❌ Ошибка записи TEMP_FILES_PATH: {e}")
