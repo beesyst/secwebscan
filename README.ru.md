@@ -156,6 +156,8 @@ secwebscan/
 ### Запуск проекта
 
 ```bash
+git clone https://github.com/beesyst/secwebscan.git
+cd secwebscan
 bash start.sh
 ```
 

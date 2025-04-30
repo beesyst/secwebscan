@@ -35,9 +35,23 @@
         <h3>{{ module_name }}</h3>
 
         {% set exclude_keys = ["severity", "created_at", "plugin"] %}
-        {% if entries and entries[0]["data"] is iterable and entries[0]["data"] is not string and entries[0]["data"][0]
-        is mapping %}
-        {% set all_keys = entries[0]["data"][0].keys() | reject("in", exclude_keys) | list %}
+
+        {# Собрать все строки из всех entries[*].data #}
+        {% set all_rows = [] %}
+        {% for entry in entries %}
+        {% if entry["data"] is mapping %}
+        {% set _ = all_rows.append(entry["data"]) %}
+        {% elif entry["data"] is iterable and entry["data"] is not string %}
+        {% for item in entry["data"] %}
+        {% if item is mapping %}
+        {% set _ = all_rows.append(item) %}
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        {% endfor %}
+
+        {% if all_rows and all_rows[0] is mapping %}
+        {% set all_keys = all_rows[0].keys() | reject("in", exclude_keys) | list %}
         {% else %}
         {% set all_keys = [] %}
         {% endif %}
@@ -45,8 +59,7 @@
         {% set column_order = namespace(keys=all_keys) %}
         {% if module_name == "nmap" %}
         {% set base_keys = ["source", "port", "protocol", "state", "reason", "service_name", "product", "version",
-        "extra",
-        "cpe", "script_output"] %}
+        "extra", "cpe", "script_output"] %}
         {% set column_order.keys = base_keys | select("in", all_keys) | list %}
         {% elif module_name == "nikto" %}
         {% set column_order.keys = ["id", "msg", "url", "method"] | select("in", all_keys) | list %}
@@ -65,17 +78,37 @@
                 </tr>
             </thead>
             <tbody>
-                {% for row in entries[0]["data"] %}
+                {# Удаление дубликатов и приоритизация источников #}
+                {% set seen = {} %}
+                {% for row in all_rows %}
+                {% set key = (row.get("port", ""), row.get("protocol", ""), row.get("service_name", "")) %}
+                {% if key not in seen %}
+                {% set _ = seen.update({key: row}) %}
+                {% else %}
+                {% if row.get("source") == "Both" %}
+                {% set _ = seen.update({key: row}) %}
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+
+                {% for row in seen.values() %}
+                {% set values = [] %}
+                {% for key in column_order.keys %}
+                {% set _ = values.append(row[key] if row[key] else "-") %}
+                {% endfor %}
+                {% set has_real_data = values | select('string') | reject('equalto', '-') | list | length > 1 %}
+                {% if has_real_data %}
                 <tr>
                     {% for key in column_order.keys %}
                     <td>{{ row[key] if row[key] else "-" }}</td>
                     {% endfor %}
                 </tr>
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <pre>{{ entries[0]["data"] | tojson(indent=2) }}</pre>
+        <pre>{{ all_rows | tojson(indent=2) }}</pre>
         {% endif %}
         {% endfor %}
     </div>
