@@ -1,7 +1,6 @@
 logs/container.log
 logs/host.log
+logs/nmap.log
 reports/*
 !reports/.gitkeep
-results/*
-!results/.gitkeep
 core/__pycache__/
