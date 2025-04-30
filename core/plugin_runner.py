@@ -11,6 +11,7 @@ import logging
 import shutil
 
 from core.logger_container import setup_container_logger
+from core.logger_plugin import clear_plugin_logs_if_needed
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
@@ -20,7 +21,7 @@ with open(CONFIG_PATH) as f:
     CONFIG = json.load(f)
 
 setup_container_logger()
-
+clear_plugin_logs_if_needed(CONFIG)
 PLUGINS = CONFIG.get("plugins", [])
 SCAN_CONFIG = CONFIG.get("scan_config", {})
 TARGET_IP = SCAN_CONFIG.get("target_ip")
@@ -104,7 +105,7 @@ async def run_plugin(plugin):
 
         if hasattr(loaded_plugin, "scan"):
             logging.info(f"Запуск функции scan() из плагина {name}...")
-            temp_paths = loaded_plugin.scan(plugin, CONFIG, debug=False)
+            temp_paths = await loaded_plugin.scan(plugin, CONFIG, debug=False)
 
             if isinstance(temp_paths, list):
                 generated_temp_paths.extend(temp_paths)

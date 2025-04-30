@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -5,8 +6,13 @@ import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
 
+from core.logger_plugin import setup_plugin_logger
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
+
+container_log = logging.getLogger()
+plugin_log = setup_plugin_logger("nmap")
 
 
 def run_nmap(target: str, suffix: str, args: str):
@@ -14,26 +20,27 @@ def run_nmap(target: str, suffix: str, args: str):
     output_path = temp_file.name
     temp_file.close()
 
-    logging.info(f"Создан временный файл для Nmap: {output_path}")
+    container_log.info(f"Создан временный файл для Nmap: {output_path}")
 
     cmd = f"nmap {args} {target} -oX {output_path}"
-    logging.info(f"Запуск Nmap на {target}: {cmd}")
+    container_log.info(f"Запуск Nmap на {target}: {cmd}")
 
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if result.returncode != 0:
-        logging.error(f"Ошибка выполнения Nmap для {target}: {result.stderr.strip()}")
-        raise RuntimeError(f"Nmap завершился с ошибкой: {result.stderr.strip()}")
 
     if result.stdout:
-        logging.info(f"[Nmap вывод для {target}]:\n{result.stdout.strip()}")
+        plugin_log.info(f"Запуск Nmap на {target}: {cmd}\n{result.stdout.strip()}")
+
+    if result.stderr:
+        plugin_log.warning(f"[STDERR {target}]:\n{result.stderr.strip()}")
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Nmap завершился с ошибкой: {result.stderr.strip()}")
 
     return output_path
 
 
 def parse(xml_path: str, source_label: str = "unknown"):
-    """Парсер для XML вывода nmap."""
     results = []
-
     try:
         tree = ET.parse(xml_path)
         root = tree.getroot()
@@ -118,7 +125,6 @@ def merge_entries(ip_entries, domain_entries):
     important_fields = get_important_fields()
 
     def is_empty(entry):
-        """Проверка, все ли важные поля пустые."""
         return all(
             str(entry.get(k, "-")).strip() in ["-", "", "null", "None", "0"]
             for k in important_fields
@@ -143,7 +149,7 @@ def merge_entries(ip_entries, domain_entries):
     return list(merged.values())
 
 
-def scan(plugin=None, config=None, debug=False):
+async def scan(plugin=None, config=None, debug=False):
     ip = config.get("scan_config", {}).get("target_ip")
     domain = config.get("scan_config", {}).get("target_domain")
     plugin_config = next(
@@ -153,21 +159,26 @@ def scan(plugin=None, config=None, debug=False):
     level = plugin_config.get("level", "easy")
     args = plugin_config.get("levels", {}).get(level, {}).get("args", "")
 
-    generated_paths = []
+    tasks = []
+    sources = []
 
     if ip:
-        path = run_nmap(ip, "ip", args)
-        generated_paths.append({"plugin": "nmap", "path": path, "source": "IP"})
+        tasks.append(asyncio.to_thread(run_nmap, ip, "ip", args))
+        sources.append("IP")
 
     if domain:
-        path = run_nmap(domain, "domain", args)
-        generated_paths.append({"plugin": "nmap", "path": path, "source": "Domain"})
+        tasks.append(asyncio.to_thread(run_nmap, domain, "domain", args))
+        sources.append("Domain")
 
-    return generated_paths
+    results = await asyncio.gather(*tasks)
+
+    return [
+        {"plugin": "nmap", "path": path, "source": src}
+        for path, src in zip(results, sources)
+    ]
 
 
 def get_summary(data):
-    """Краткое описание для использования в будущих отчётах."""
     return " | ".join(
         f"{d.get('port', '?')}/{d.get('protocol', '?')} {d.get('state', '?')}"
         for d in data
@@ -176,7 +187,6 @@ def get_summary(data):
 
 
 def get_column_order():
-    """Порядок колонок для TERMINAL и HTML вывода."""
     return [
         "source",
         "port",
@@ -193,16 +203,13 @@ def get_column_order():
 
 
 def get_wide_fields():
-    return [
-        "product",
-        "version",
-        "extra",
-        "script_output",
-        "cpe",
-    ]
+    return ["product", "version", "extra", "script_output", "cpe"]
 
 
 if __name__ == "__main__":
+    import asyncio
+
     with open(CONFIG_PATH) as f:
         CONFIG = json.load(f)
-    print(json.dumps(scan(config=CONFIG, debug=True), indent=2, ensure_ascii=False))
+    result = asyncio.run(scan(config=CONFIG, debug=True))
+    print(json.dumps(result, indent=2, ensure_ascii=False))

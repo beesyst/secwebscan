@@ -209,7 +209,7 @@ def start_secwebscan_container():
         "-v",
         f"{os.path.join(ROOT_DIR, 'results')}:/results",
         "-v",
-        f"{os.path.join(ROOT_DIR, 'logs', 'container.log')}:/logs/container.log",
+        f"{os.path.join(ROOT_DIR, 'logs')}:/logs",
         "-v",
         f"{os.path.join(ROOT_DIR, 'config')}:/config",
         "-v",
