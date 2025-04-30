@@ -206,38 +206,8 @@ def collect(temp_files=None, purge_only=False):
                     purge_results(cursor)
                     return
 
-                temp_files_path = os.environ.get("TEMP_FILES_PATH")
-                if not temp_files_path:
-                    if purge_only:
-                        logging.info(
-                            "Режим очистки базы (--purge_only). TEMP_FILES_PATH не требуется."
-                        )
-                    else:
-                        logging.error("Не указана переменная среды TEMP_FILES_PATH.")
-                    return
-
-                if not os.path.exists(temp_files_path):
-                    logging.error(f"Файл {temp_files_path} не найден.")
-                    return
-
-                try:
-                    with open(temp_files_path, "r") as f:
-                        temp_files = json.load(f)
-                    logging.info(
-                        f"Загружено {len(temp_files)} временных файлов из {temp_files_path}."
-                    )
-                except Exception as e:
-                    logging.error(f"Ошибка загрузки временных файлов: {e}")
-                    return
-
-                try:
-                    os.remove(temp_files_path)
-                    logging.info(f"Файл {temp_files_path} успешно удалён.")
-                except Exception as e:
-                    logging.warning(f"Не удалось удалить {temp_files_path}: {e}")
-
                 if not temp_files:
-                    logging.error("Список временных файлов пуст. Прерывание.")
+                    logging.error("Не передан список временных файлов. Прерывание.")
                     return
 
                 total_added = process_temp_files(cursor, temp_files)
@@ -251,4 +221,28 @@ def collect(temp_files=None, purge_only=False):
 
 
 if __name__ == "__main__":
-    collect()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--temp-file", help="Путь к JSON-файлу с путями временных файлов"
+    )
+    parser.add_argument(
+        "--purge-only", action="store_true", help="Очистить базу и выйти"
+    )
+    args = parser.parse_args()
+
+    if args.purge_only:
+        collect(purge_only=True)
+    elif args.temp_file:
+        if os.path.exists(args.temp_file):
+            try:
+                with open(args.temp_file, "r", encoding="utf-8") as f:
+                    temp_files = json.load(f)
+                collect(temp_files=temp_files)
+            except Exception as e:
+                logging.error(f"Ошибка при чтении временного файла: {e}")
+        else:
+            logging.error(f"Файл не найден: {args.temp_file}")
+    else:
+        logging.error("Не передан аргумент --temp-file и не указан флаг --purge-only.")

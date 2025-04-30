@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(0, "/")
 
+import argparse
 import asyncio
 import importlib.util
 import json
@@ -25,17 +26,12 @@ SCAN_CONFIG = CONFIG.get("scan_config", {})
 TARGET_IP = SCAN_CONFIG.get("target_ip")
 TARGET_DOMAIN = SCAN_CONFIG.get("target_domain")
 
-TEMP_FILES_PATH = os.getenv("TEMP_FILES_PATH")
 generated_temp_paths = []
 
 if not TARGET_IP and not TARGET_DOMAIN:
     raise ValueError(
         "Не указан ни target_ip, ни target_domain в конфиге. Укажите хотя бы один."
     )
-
-if not TEMP_FILES_PATH:
-    logging.critical("Переменная TEMP_FILES_PATH не установлена в окружении!")
-    exit(1)
 
 
 def is_tool_installed(tool_name):
@@ -133,13 +129,21 @@ async def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output",
+        required=True,
+        help="Путь для сохранения JSON-файла с результатами сканирования",
+    )
+    args = parser.parse_args()
+
     paths = asyncio.run(main())
 
     try:
-        with open(TEMP_FILES_PATH, "w", encoding="utf-8") as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             json.dump(paths, f, ensure_ascii=False)
-        logging.info(f"Сохранены пути временных файлов: {TEMP_FILES_PATH}")
+        logging.info(f"Сохранены пути временных файлов: {args.output}")
     except Exception as e:
-        print(f"❌ Ошибка записи TEMP_FILES_PATH: {e}")
-        logging.error(f"Ошибка записи TEMP_FILES_PATH: {e}")
+        print(f"❌ Ошибка записи в {args.output}: {e}")
+        logging.error(f"Ошибка записи JSON-файла: {e}")
         exit(1)

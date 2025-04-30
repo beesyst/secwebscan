@@ -7,8 +7,6 @@ import threading
 import time
 from datetime import datetime
 
-TEMP_FILES_PATH = ""
-
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT_DIR)
 
@@ -244,18 +242,18 @@ def purge_database():
         print("🧹 Очистка базы данных перед сканированием...")
         logging.info("Очистка базы данных перед сканированием")
         run_command(
-            "docker exec secwebscan_base python3 /core/collector.py --purge_only",
+            "docker exec secwebscan_base python3 /core/collector.py --purge-only",
             hide_output=False,
         )
     else:
         logging.info("Флаг clear_db=false. Пропуск очистки базы.")
 
 
-def run_plugins():
+def run_plugins(temp_files_path):
     print("🔧 Запуск всех плагинов асинхронно...")
     logging.info("Запуск всех плагинов через docker exec plugin_runner.py")
 
-    cmd = f"docker exec -e TEMP_FILES_PATH={TEMP_FILES_PATH} secwebscan_base python3 /core/plugin_runner.py"
+    cmd = f"docker exec secwebscan_base python3 /core/plugin_runner.py --output {temp_files_path}"
 
     stop_event = threading.Event()
     spinner_thread = threading.Thread(
@@ -277,16 +275,16 @@ def run_plugins():
         logging.error("Ошибка выполнения плагинов.")
         exit(1)
 
-    logging.info(f"Сохранены пути временных файлов: {TEMP_FILES_PATH}")
+    logging.info(f"Сохранены пути временных файлов: {temp_files_path}")
     print("✅ Плагины успешно завершили выполнение.")
     logging.info("Плагины завершили выполнение.")
 
 
-def run_collector():
+def run_collector(temp_files_path):
     print("📥 Сбор результатов в БД...")
     logging.info("Запуск collector.collect()")
 
-    cmd = f"docker exec -e TEMP_FILES_PATH={TEMP_FILES_PATH} secwebscan_base python3 /core/collector.py"
+    cmd = f"docker exec secwebscan_base python3 /core/collector.py --temp-file {temp_files_path}"
 
     result = subprocess.run(
         cmd,
@@ -368,10 +366,9 @@ def main():
     start_secwebscan_container()
     purge_database()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    global TEMP_FILES_PATH
-    TEMP_FILES_PATH = f"/tmp/temp_files_{timestamp}.json"
-    run_plugins()
-    run_collector()
+    temp_files_path = f"/tmp/temp_files_{timestamp}.json"
+    run_plugins(temp_files_path)
+    run_collector(temp_files_path)
     generate_reports()
     post_scan_chown()
     print("✅ SecWebScan завершил выполнение!")
