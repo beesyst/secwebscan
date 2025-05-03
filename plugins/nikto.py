@@ -1,86 +1,110 @@
+import asyncio
 import json
+import logging
+import os
 import subprocess
-from datetime import datetime
+import tempfile
 
-CONFIG_PATH = "/config/config.json"
+from core.logger_plugin import setup_plugin_logger
 
-with open(CONFIG_PATH) as f:
-    CONFIG = json.load(f)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
 
-TARGET = CONFIG["scan_config"].get("target_domain")
-if not TARGET:
-    raise ValueError("Для nikto требуется target_domain, но он не указан в конфиге.")
+container_log = logging.getLogger()
+plugin_log = setup_plugin_logger("nikto")
 
 
-def scan_with_nikto():
-    output_path = "/results/nikto.json"
-    cmd = f"nikto -h https://{TARGET} -p 443 -o {output_path} -Format json -Display V -ssl -followredirects"
+def run_nikto(target: str, args: str):
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix="_nikto.json")
+    output_path = temp_file.name
+    temp_file.close()
 
-    process = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    stdout, stderr = process.communicate()
+    container_log.info(f"Создан временный файл для Nikto: {output_path}")
 
-    if process.returncode != 0:
-        raise RuntimeError(f"Nikto завершился с ошибкой: {stderr.decode().strip()}")
+    cmd = f"nikto -h {target} {args} -o {output_path} -Format json"
+    container_log.info(f"Запуск Nikto на {target}: {cmd}")
+
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+    if result.stdout:
+        plugin_log.info(f"STDOUT Nikto на {target}:\n{result.stdout.strip()}")
+    if result.stderr:
+        plugin_log.warning(f"STDERR Nikto на {target}:\n{result.stderr.strip()}")
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Nikto завершился с ошибкой: {result.stderr.strip()}")
+
+    if not os.path.exists(output_path) or os.stat(output_path).st_size == 0:
+        raise RuntimeError(
+            "Nikto не создал JSON-файл или файл пустой. "
+            "Возможно, превышено время выполнения или неправильные флаги."
+        )
 
     return output_path
 
 
-def parse(json_path):
-    results = []
-
+def parse(json_path: str, source_label: str = "Domain"):
     try:
         with open(json_path, "r") as f:
-            raw = f.read()
-            data = json.loads(raw)
+            data = json.load(f)
 
-        if not data or "vulnerabilities" not in data[0]:
-            return results
+        if not data or not isinstance(data, list):
+            return []
 
-        parsed_entries = []
-        for vuln in data[0]["vulnerabilities"]:
-            parsed_entries.append(
-                {
-                    "url": vuln.get("url", "-"),
-                    "method": vuln.get("method", "-"),
-                    "msg": vuln.get("msg", "-"),
-                    "id": vuln.get("id", "-"),
-                    "severity": "info",
-                }
-            )
+        findings = []
+        for item in data:
+            for vuln in item.get("vulnerabilities", []):
+                findings.append(
+                    {
+                        "url": vuln.get("url", "-"),
+                        "method": vuln.get("method", "-"),
+                        "msg": vuln.get("msg", "-"),
+                        "id": vuln.get("id", "-"),
+                        "references": vuln.get("references", "-"),
+                        "source": source_label,
+                    }
+                )
 
-        if parsed_entries:
-            results.append(
-                {
-                    "target": TARGET,
-                    "module": "nikto",
-                    "type": "nikto",
-                    "severity": "info",
-                    "data": parsed_entries,
-                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                }
-            )
+        return findings
 
     except Exception as e:
-        raise RuntimeError(f"Ошибка при парсинге Nikto: {e}")
-
-    return results
+        raise RuntimeError(f"Ошибка при парсинге Nikto JSON: {e}")
 
 
-def get_summary(data):
-    return " | ".join(
-        f"{d.get('url', '-')}: {d.get('msg', '-')[:40]}"
-        for d in data
-        if isinstance(d, dict)
-    )
+def get_important_fields():
+    return ["msg"]
 
 
 def get_column_order():
-    return ["url", "method", "msg", "id"]
+    return ["source", "url", "method", "msg", "id", "references"]
+
+
+def get_wide_fields():
+    return ["url", "msg", "references"]
+
+
+async def scan(plugin=None, config=None, debug=False):
+    domain = config.get("scan_config", {}).get("target_domain")
+    if not domain:
+        raise ValueError("Для nikto требуется target_domain")
+
+    plugin_config = next(
+        (p for p in config.get("plugins", []) if p["name"] == "nikto"), {}
+    )
+    level = plugin_config.get("level", "easy")
+    args = plugin_config.get("levels", {}).get(level, {}).get("args", "")
+
+    path = await asyncio.to_thread(run_nikto, domain, args)
+    return [{"plugin": "nikto", "path": path, "source": "Domain"}]
+
+
+def should_merge_entries():
+    return False
 
 
 if __name__ == "__main__":
-    json_file = scan_with_nikto()
-    parsed = parse(json_file)
-    print(json.dumps(parsed, indent=2, ensure_ascii=False))
+    with open(CONFIG_PATH) as f:
+        CONFIG = json.load(f)
+
+    result = asyncio.run(scan(config=CONFIG, debug=True))
+    print(json.dumps(result, indent=2, ensure_ascii=False))

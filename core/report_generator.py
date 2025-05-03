@@ -232,10 +232,14 @@ def show_in_terminal(results):
                 continue
 
             important_fields = []
+            merge_enabled = True
+
             try:
                 plugin_module = importlib.import_module(f"plugins.{plugin_name}")
                 if hasattr(plugin_module, "get_important_fields"):
                     important_fields = plugin_module.get_important_fields()
+                if hasattr(plugin_module, "should_merge_entries"):
+                    merge_enabled = plugin_module.should_merge_entries()
             except Exception:
                 pass
 
@@ -249,18 +253,21 @@ def show_in_terminal(results):
 
                 all_data = [d for d in all_data if is_meaningful(d)]
 
-            final_data = []
-            seen = {}
-            for d in all_data:
-                key = (d.get("port"), d.get("protocol"), d.get("service_name"))
-
-                if key in seen:
-                    if d.get("source") == "Both":
+            if merge_enabled:
+                seen = {}
+                for d in all_data:
+                    key = (d.get("port"), d.get("protocol"), d.get("service_name"))
+                    if key in seen:
+                        existing = seen[key]
+                        existing_sources = set(existing.get("source", "").split("+"))
+                        new_sources = set(d.get("source", "").split("+"))
+                        combined_sources = sorted(existing_sources.union(new_sources))
+                        existing["source"] = "+".join(combined_sources)
+                    else:
                         seen[key] = d
-                else:
-                    seen[key] = d
-
-            unique_data = list(seen.values())
+                unique_data = list(seen.values())
+            else:
+                unique_data = all_data
 
             if not unique_data:
                 continue

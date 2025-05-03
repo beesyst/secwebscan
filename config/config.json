@@ -26,21 +26,36 @@
       "vhost_required": true,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
-      "level": "easy",
+      "level": "middle",
       "levels": {
         "custom": {
-          "args": "-T4 -sT -Pn -n -p 22,25,80,443,996,8080,8443"
+          "ip_args": "-T4 -sT -Pn -n -p 22,25,80,443,996,8080,8443",
+          "http_args": "-T4 -sT -Pn -n -p 80",
+          "https_args": "-T4 -sT -Pn -n -p 443 --script ssl-cert,ssl-enum-ciphers",
+          "args": "-T4 -sT -Pn -n"
         },
         "easy": {
-          "args": "-T4 -F -sS -Pn"
+          "ip_args": "-T4 -F -sS -Pn",
+          "http_args": "-T4 -sS -Pn -p 80",
+          "https_args": "-T4 -sS -Pn -p 443 --script ssl-cert,ssl-enum-ciphers",
+          "args": "-T4 -sS -Pn"
         },
         "middle": {
+          "ip_args": "-T4 -sS -sV -Pn --open",
+          "http_args": "-T4 -sS -sV -Pn --open -p 80",
+          "https_args": "-T4 -sS -sV -Pn --open -p 443 --script ssl-cert,ssl-enum-ciphers",
           "args": "-T4 -sS -sV -Pn --open"
         },
         "hard": {
+          "ip_args": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln\"",
+          "http_args": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln\" -p 80",
+          "https_args": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln,ssl-cert,ssl-enum-ciphers\" -p 443",
           "args": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln\""
         },
         "extreme": {
+          "ip_args": "-T4 -p- -sS -sV -O -Pn --script \"default,safe,vuln,discovery\" --max-retries 2 --host-timeout 5m",
+          "http_args": "-T4 -p 80 -sS -sV -O -Pn --script \"default,safe,vuln,discovery\" --max-retries 2 --host-timeout 5m",
+          "https_args": "-T4 -p 443 -sS -sV -O -Pn --script \"default,safe,vuln,discovery,ssl-cert,ssl-enum-ciphers\" --max-retries 2 --host-timeout 5m",
           "args": "-T4 -p- -sS -sV -O -Pn --script \"default,safe,vuln,discovery\" --max-retries 2 --host-timeout 5m"
         }
       }
@@ -48,7 +63,7 @@
     {
       "name": "nikto",
       "enabled": false,
-      "ip_required": false,
+      "ip_required": true,
       "vhost_required": true,
       "category": "Application Security",
       "install": [
@@ -60,9 +75,6 @@
         "echo 'perl nikto.pl \"$@\"' >> /usr/local/bin/nikto",
         "chmod +x /usr/local/bin/nikto"
       ],
-      "command": "nikto {args} -h http://{target} -o {stdout} -Format json",
-      "output": "results/nikto.json",
-      "parser": "json",
       "level": "easy",
       "levels": {
         "custom": {

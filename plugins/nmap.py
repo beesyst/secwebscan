@@ -120,7 +120,11 @@ def get_important_fields():
     ]
 
 
-def merge_entries(ip_entries, domain_entries):
+def merge_sources(a, b):
+    return "+".join(sorted(set(a.split("+")) | set(b.split("+"))))
+
+
+def merge_entries(*entry_lists):
     merged = {}
     important_fields = get_important_fields()
 
@@ -130,21 +134,22 @@ def merge_entries(ip_entries, domain_entries):
             for k in important_fields
         )
 
-    ip_entries = [e for e in ip_entries if not is_empty(e)]
-    domain_entries = [e for e in domain_entries if not is_empty(e)]
-
-    for entry in ip_entries + domain_entries:
-        key = (entry.get("port"), entry.get("protocol"), entry.get("service_name"))
-
-        if key in merged:
-            existing = merged[key]
-            if all(entry.get(k, "-") == existing.get(k, "-") for k in important_fields):
-                merged[key]["source"] = "Both"
+    for entries in entry_lists:
+        for entry in [e for e in entries if not is_empty(e)]:
+            key = (entry.get("port"), entry.get("protocol"), entry.get("service_name"))
+            if key in merged:
+                existing = merged[key]
+                if all(
+                    entry.get(k, "-") == existing.get(k, "-") for k in important_fields
+                ):
+                    existing["source"] = merge_sources(
+                        existing["source"], entry["source"]
+                    )
+                else:
+                    new_key = key + (entry["source"],)
+                    merged[new_key] = entry
             else:
-                new_key = key + ("duplicate",)
-                merged[new_key] = entry
-        else:
-            merged[key] = entry
+                merged[key] = entry
 
     return list(merged.values())
 
@@ -157,21 +162,31 @@ async def scan(plugin=None, config=None, debug=False):
     )
 
     level = plugin_config.get("level", "easy")
-    args = plugin_config.get("levels", {}).get(level, {}).get("args", "")
+    args_base = plugin_config.get("levels", {}).get(level, {}).get("args", "")
 
     tasks = []
     sources = []
 
     if ip:
-        tasks.append(asyncio.to_thread(run_nmap, ip, "ip", args))
+        tasks.append(asyncio.to_thread(run_nmap, ip, "ip", args_base))
         sources.append("IP")
 
     if domain:
-        tasks.append(asyncio.to_thread(run_nmap, domain, "domain", args))
-        sources.append("Domain")
+        tasks.append(
+            asyncio.to_thread(run_nmap, domain, "domain_http", f"{args_base} -p 80")
+        )
+        sources.append("Http")
+        tasks.append(
+            asyncio.to_thread(
+                run_nmap,
+                domain,
+                "domain_https",
+                f"{args_base} -p 443 --script ssl-cert,ssl-enum-ciphers",
+            )
+        )
+        sources.append("Https")
 
     results = await asyncio.gather(*tasks)
-
     return [
         {"plugin": "nmap", "path": path, "source": src}
         for path, src in zip(results, sources)
@@ -206,9 +221,11 @@ def get_wide_fields():
     return ["product", "version", "extra", "script_output", "cpe"]
 
 
-if __name__ == "__main__":
-    import asyncio
+def should_merge_entries():
+    return True
 
+
+if __name__ == "__main__":
     with open(CONFIG_PATH) as f:
         CONFIG = json.load(f)
     result = asyncio.run(scan(config=CONFIG, debug=True))

@@ -109,23 +109,36 @@ def process_temp_files(cursor, temp_files):
                     f"Объединение данных через merge_entries() для {plugin_name}..."
                 )
 
-                ip_file = next((f for f in files if f["source"].lower() == "ip"), None)
-                domain_file = next(
-                    (f for f in files if f["source"].lower() == "domain"), None
-                )
+                source_map = {
+                    "IP": ip_target,
+                    "Http": domain_target,
+                    "Https": domain_target,
+                }
 
-                if not ip_file or not domain_file:
-                    logging.error(
-                        f"Не найдены оба файла IP и Domain для {plugin_name}. Пропускаем объединение."
-                    )
-                    continue
+                parsed_lists = []
+                for f in files:
+                    label = f.get("source", "unknown")
+                    parsed = plugin_parser.parse(f["path"], source_label=label)
+                    parsed_lists.append(parsed)
 
-                ip_data = plugin_parser.parse(ip_file["path"], source_label="IP")
-                domain_data = plugin_parser.parse(
-                    domain_file["path"], source_label="Domain"
-                )
+                merged_data = plugin_parser.merge_entries(*parsed_lists)
 
-                merged_data = plugin_parser.merge_entries(ip_data, domain_data)
+                results = []
+                for data in merged_data:
+                    source = data.get("source", "unknown")
+                    if "+" in source:
+                        data["target"] = (
+                            domain_target
+                            if "Http" in source or "Https" in source
+                            else ip_target
+                        )
+                    else:
+                        data["target"] = source_map.get(source, "unknown")
+
+                    if not important_fields or is_meaningful_entry(
+                        data, important_fields
+                    ):
+                        results.append(data)
 
                 for data in merged_data:
                     source = data.get("source", "unknown")
