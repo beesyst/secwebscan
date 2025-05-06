@@ -1,0 +1,73 @@
+2025-05-06 22:45:30 [INFO] - Запуск Nmap на honey.scanme.sh: nmap -T4 -sS -Pn -p 80 honey.scanme.sh -oX /tmp/tmpw5vg57se_domain_http.xml
+Starting Nmap 7.93 ( https://nmap.org ) at 2025-05-06 22:45 +05
+Nmap scan report for honey.scanme.sh (67.205.158.113)
+Host is up (0.28s latency).
+
+PORT   STATE SERVICE
+80/tcp open  http
+
+Nmap done: 1 IP address (1 host up) scanned in 0.83 seconds
+2025-05-06 22:45:35 [INFO] - Запуск Nmap на 64.227.103.24: nmap -T4 -F -sS -Pn 64.227.103.24 -oX /tmp/tmpzlpt6e5a_ip.xml
+Starting Nmap 7.93 ( https://nmap.org ) at 2025-05-06 22:45 +05
+Nmap scan report for 64.227.103.24
+Host is up (0.29s latency).
+Not shown: 95 filtered tcp ports (no-response)
+PORT     STATE  SERVICE
+80/tcp   open   http
+443/tcp  open   https
+3000/tcp open   ppp
+5000/tcp open   upnp
+8000/tcp closed http-alt
+
+Nmap done: 1 IP address (1 host up) scanned in 6.02 seconds
+2025-05-06 22:45:39 [INFO] - Запуск Nmap на honey.scanme.sh: nmap -T4 -sS -Pn -p 443 --script ssl-cert,ssl-enum-ciphers honey.scanme.sh -oX /tmp/tmpqizjr6ww_domain_https.xml
+Starting Nmap 7.93 ( https://nmap.org ) at 2025-05-06 22:45 +05
+Nmap scan report for honey.scanme.sh (67.205.158.113)
+Host is up (0.32s latency).
+
+PORT    STATE SERVICE
+443/tcp open  https
+| ssl-enum-ciphers: 
+|   TLSv1.0: 
+|     ciphers: 
+|       TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (secp256r1) - A
+|       TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (secp256r1) - A
+|     compressors: 
+|       NULL
+|     cipher preference: server
+|   TLSv1.1: 
+|     ciphers: 
+|       TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (secp256r1) - A
+|       TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (secp256r1) - A
+|     compressors: 
+|       NULL
+|     cipher preference: server
+|   TLSv1.2: 
+|     ciphers: 
+|       TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (secp256r1) - A
+|       TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (secp256r1) - A
+|       TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (secp256r1) - A
+|       TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 (secp256r1) - A
+|       TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 (secp256r1) - A
+|     compressors: 
+|       NULL
+|     cipher preference: client
+|   TLSv1.3: 
+|     ciphers: 
+|       TLS_AKE_WITH_AES_128_GCM_SHA256 (ecdh_x25519) - A
+|       TLS_AKE_WITH_AES_256_GCM_SHA384 (ecdh_x25519) - A
+|       TLS_AKE_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519) - A
+|     cipher preference: server
+|_  least strength: A
+| ssl-cert: Subject: commonName=honey.scanme.sh
+| Subject Alternative Name: DNS:honey.scanme.sh
+| Issuer: commonName=R3/organizationName=Let's Encrypt/countryName=US
+| Public Key type: ec
+| Public Key bits: 256
+| Signature Algorithm: sha256WithRSAEncryption
+| Not valid before: 2024-04-09T16:14:22
+| Not valid after:  2024-07-08T16:14:21
+| MD5:   abb6fe655439ba80781d3eb4cc6f0c38
+|_SHA-1: cdfc3a7693324a0c4c9b59f8fa4c09461995eef8
+
+Nmap done: 1 IP address (1 host up) scanned in 9.91 seconds

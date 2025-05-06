@@ -28,11 +28,15 @@ def run_nmap(target: str, suffix: str, args: str):
 
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
+    full_log = f"Запуск Nmap на {target}: {cmd}\n"
+
     if result.stdout:
-        plugin_log.info(f"Запуск Nmap на {target}: {cmd}\n{result.stdout.strip()}")
+        full_log += result.stdout.strip()
 
     if result.stderr:
-        plugin_log.warning(f"[STDERR {target}]:\n{result.stderr.strip()}")
+        full_log += f"\n[STDERR]:\n{result.stderr.strip()}"
+
+    plugin_log.info(full_log)
 
     if result.returncode != 0:
         raise RuntimeError(f"Nmap завершился с ошибкой: {result.stderr.strip()}")

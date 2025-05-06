@@ -14,8 +14,10 @@ container_log = logging.getLogger()
 plugin_log = setup_plugin_logger("nikto")
 
 
-def run_nikto(target: str, args: str):
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix="_nikto.json")
+def run_nikto(target: str, suffix: str, args: str):
+    temp_file = tempfile.NamedTemporaryFile(
+        delete=False, suffix=f"_{suffix}_nikto.json"
+    )
     output_path = temp_file.name
     temp_file.close()
 
@@ -26,10 +28,14 @@ def run_nikto(target: str, args: str):
 
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
-    if result.stdout:
-        plugin_log.info(f"STDOUT Nikto на {target}:\n{result.stdout.strip()}")
-    if result.stderr:
-        plugin_log.warning(f"STDERR Nikto на {target}:\n{result.stderr.strip()}")
+    log_parts = [f"Запуск Nikto на {target}: {cmd}"]
+
+    if result.stdout.strip():
+        log_parts.append(result.stdout.strip())
+    if result.stderr.strip():
+        log_parts.append(f"[STDERR]:\n{result.stderr.strip()}")
+
+    plugin_log.info("\n".join(log_parts))
 
     if result.returncode != 0:
         raise RuntimeError(f"Nikto завершился с ошибкой: {result.stderr.strip()}")
@@ -83,28 +89,42 @@ def get_wide_fields():
     return ["url", "msg", "references"]
 
 
-async def scan(plugin=None, config=None, debug=False):
-    domain = config.get("scan_config", {}).get("target_domain")
-    if not domain:
-        raise ValueError("Для nikto требуется target_domain")
+def should_merge_entries():
+    return False
 
+
+async def scan(plugin=None, config=None, debug=False):
+    ip = config.get("scan_config", {}).get("target_ip")
+    domain = config.get("scan_config", {}).get("target_domain")
     plugin_config = next(
         (p for p in config.get("plugins", []) if p["name"] == "nikto"), {}
     )
     level = plugin_config.get("level", "easy")
-    args = plugin_config.get("levels", {}).get(level, {}).get("args", "")
+    level_config = plugin_config.get("levels", {}).get(level, {})
 
-    path = await asyncio.to_thread(run_nikto, domain, args)
-    return [{"plugin": "nikto", "path": path, "source": "Domain"}]
+    tasks = []
+    sources = []
 
+    if ip and "ip" in level_config:
+        tasks.append(asyncio.to_thread(run_nikto, ip, "ip", level_config["ip"]))
+        sources.append("IP")
 
-def should_merge_entries():
-    return False
+    if domain and "http" in level_config:
+        tasks.append(
+            asyncio.to_thread(run_nikto, domain, "domain_http", level_config["http"])
+        )
+        sources.append("Domain")
+
+    results = await asyncio.gather(*tasks)
+
+    return [
+        {"plugin": "nikto", "path": path, "source": src}
+        for path, src in zip(results, sources)
+    ]
 
 
 if __name__ == "__main__":
     with open(CONFIG_PATH) as f:
         CONFIG = json.load(f)
-
     result = asyncio.run(scan(config=CONFIG, debug=True))
     print(json.dumps(result, indent=2, ensure_ascii=False))

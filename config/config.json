@@ -27,9 +27,9 @@
       "level": "easy",
       "levels": {
         "custom": {
-          "ip": "-T4 -sT -Pn -n -p 22,25,80,443,996,8080,8443",
-          "http": "-T4 -sT -Pn -n -p 80",
-          "https": "-T4 -sT -Pn -n -p 443 --script ssl-cert,ssl-enum-ciphers"
+          "ip": "",
+          "http": "",
+          "https": ""
         },
         "easy": {
           "ip": "-T4 -F -sS -Pn",
@@ -55,9 +55,7 @@
     },
     {
       "name": "nikto",
-      "enabled": false,
-      "ip_required": true,
-      "vhost_required": true,
+      "enabled": true,
       "category": "Application Security",
       "install": [
         "apt-get update",
@@ -71,19 +69,24 @@
       "level": "easy",
       "levels": {
         "custom": {
-          "args": "-Tuning 2345 -Display V -Plugins tests"
+          "ip": "",
+          "http": ""
         },
         "easy": {
-          "args": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P"
+          "ip": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no",
+          "http": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no"
         },
         "middle": {
-          "args": "-Tuning 12345 -Display V -nointeractive -followredirects"
+          "ip": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no",
+          "http": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no"
         },
         "hard": {
-          "args": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ssl"
+          "ip": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ssl -ask no",
+          "http": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no"
         },
         "extreme": {
-          "args": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ssl -Plugins ALL"
+          "ip": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ssl -Plugins ALL -ask no",
+          "http": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no"
         }
       }
     },
