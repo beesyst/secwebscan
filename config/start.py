@@ -1,8 +1,10 @@
+import glob
 import json
 import logging
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from datetime import datetime
@@ -249,6 +251,18 @@ def purge_database():
         logging.info("Флаг clear_db=false. Пропуск очистки базы.")
 
 
+def cleanup_tmp_files():
+    tmp_dir = tempfile.gettempdir()
+    tmp_patterns = [f"{tmp_dir}/*_ip.xml", f"{tmp_dir}/*_domain_*.xml"]
+    for pattern in tmp_patterns:
+        for f in glob.glob(pattern):
+            try:
+                os.remove(f)
+                logging.info(f"Удалён временный файл: {f}")
+            except Exception as e:
+                logging.warning(f"Не удалось удалить {f}: {e}")
+
+
 def run_plugins(temp_files_path):
     print("🔧 Запуск всех плагинов асинхронно...")
     logging.info("Запуск всех плагинов через docker exec plugin_runner.py")
@@ -365,8 +379,11 @@ def main():
     ensure_secwebscan_base_image()
     start_secwebscan_container()
     purge_database()
+    cleanup_tmp_files()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    temp_files_path = f"/tmp/temp_files_{timestamp}.json"
+    temp_files_path = os.path.join(
+        tempfile.gettempdir(), f"temp_files_{timestamp}.json"
+    )
     run_plugins(temp_files_path)
     run_collector(temp_files_path)
     generate_reports()

@@ -255,27 +255,24 @@ async def scan(plugin=None, config=None, debug=False):
     )
 
     level = plugin_config.get("level", "easy")
-    args_base = plugin_config.get("levels", {}).get(level, {}).get("args", "")
+    level_config = plugin_config.get("levels", {}).get(level, {})
 
     tasks = []
     sources = []
 
-    if ip:
-        tasks.append(asyncio.to_thread(run_nmap, ip, "ip", args_base))
+    if ip and "ip" in level_config:
+        tasks.append(asyncio.to_thread(run_nmap, ip, "ip", level_config["ip"]))
         sources.append("IP")
 
-    if domain:
+    if domain and "http" in level_config:
         tasks.append(
-            asyncio.to_thread(run_nmap, domain, "domain_http", f"{args_base} -p 80")
+            asyncio.to_thread(run_nmap, domain, "domain_http", level_config["http"])
         )
         sources.append("Http")
+
+    if domain and "https" in level_config:
         tasks.append(
-            asyncio.to_thread(
-                run_nmap,
-                domain,
-                "domain_https",
-                f"{args_base} -p 443 --script ssl-cert,ssl-enum-ciphers",
-            )
+            asyncio.to_thread(run_nmap, domain, "domain_https", level_config["https"])
         )
         sources.append("Https")
 

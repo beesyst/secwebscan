@@ -79,16 +79,6 @@ async def run_plugin(plugin):
         logging.info(f"Плагин {name} отключен в конфиге. Пропускаем.")
         return
 
-    ip_required = plugin.get("ip_required", False)
-    vhost_required = plugin.get("vhost_required", False)
-
-    if ip_required and not TARGET_IP:
-        logging.info(f"{name} требует IP, но он не указан. Пропускаем.")
-        return
-    if vhost_required and not TARGET_DOMAIN:
-        logging.info(f"{name} требует домен, но он не указан. Пропускаем.")
-        return
-
     success = await install_plugin(plugin)
     if not success:
         return
