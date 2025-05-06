@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
+from collections import Counter
 
 from core.logger_plugin import setup_plugin_logger
 
@@ -39,6 +40,94 @@ def run_nmap(target: str, suffix: str, args: str):
     return output_path
 
 
+def format_script_output(raw: str) -> str:
+    raw = raw.strip()
+    if raw == "-":
+        return "-"
+
+    sections = []
+
+    lines = raw.splitlines()
+
+    # TLS Cipher Support
+    if any("TLSv1." in l or "TLSv1.3" in l for l in lines):
+        tls_lines = []
+        current_version = ""
+        for line in lines:
+            if "TLSv1." in line or "TLSv1.3" in line:
+                current_version = line.strip().strip(":")
+                tls_lines.append(f"\n{current_version}")
+            elif "TLS_" in line or "TLS_AKE_" in line:
+                tls_lines.append(f"- {line.strip()}")
+        if tls_lines:
+            sections.append(
+                "[TLS Cipher Support]" + "\n" + "\n".join(tls_lines).strip()
+            )
+
+    # Certificate Info
+    if "Subject:" in raw and "Valid:" in raw:
+        cert_block = ["[Cert Info]"]
+        for key in [
+            "Subject:",
+            "Subject Alternative Name",
+            "Issuer:",
+            "Public Key",
+            "Signature Algorithm",
+            "Not valid",
+            "MD5:",
+            "SHA-1:",
+        ]:
+            cert_block.extend([line.strip() for line in lines if key in line])
+        sections.append("\n".join(cert_block))
+
+    # FTP Info
+    if "FTP" in raw or "Anonymous FTP login allowed" in raw:
+        ftp_block = ["[FTP Info]"]
+        ftp_block.extend([line.strip() for line in lines if "FTP" in line])
+        sections.append("\n".join(ftp_block))
+
+    # SSH Info
+    if "SSH" in raw:
+        ssh_block = ["[SSH Info]"]
+        ssh_block.extend([line.strip() for line in lines if "SSH" in line])
+        sections.append("\n".join(ssh_block))
+
+    # HTTP Pattern Matching
+    if "/nice ports" in raw or "FourOhFourRequest" in raw:
+        http_block = ["[HTTP Response Patterns]"]
+        http_block.extend(
+            [
+                f"- {line.strip()}"
+                for line in lines
+                if any(k in line for k in ["FourOhFourRequest", "Request", "OPTIONS"])
+            ]
+        )
+        sections.append("\n".join(http_block))
+
+    # Vulnerabilities with CVE counting
+    if "CVE-" in raw or "vulnerab" in raw.lower():
+        vuln_lines = [
+            line.strip()
+            for line in lines
+            if "CVE-" in line or "vulnerab" in line.lower()
+        ]
+        cves = [
+            word
+            for line in vuln_lines
+            for word in line.split()
+            if word.startswith("CVE-")
+        ]
+        cve_counter = Counter(cves)
+        counted_cves = [
+            f"{cve} (×{count})" if count > 1 else cve
+            for cve, count in cve_counter.items()
+        ]
+        vuln_block = "[Vulnerabilities]\n" + "\n".join(counted_cves + vuln_lines)
+        sections.append(vuln_block)
+
+    return "\n\n".join(sections).strip() if sections else raw
+
+
 def parse(xml_path: str, source_label: str = "unknown"):
     results = []
     try:
@@ -51,6 +140,13 @@ def parse(xml_path: str, source_label: str = "unknown"):
             for port in ports.findall("port"):
                 state_el = port.find("state")
                 service_el = port.find("service")
+
+                raw_output = (
+                    "; ".join(
+                        s.attrib.get("output", "") for s in port.findall("script")
+                    )
+                    or "-"
+                )
 
                 data = {
                     "port": int(port.attrib.get("portid", 0)),
@@ -90,10 +186,7 @@ def parse(xml_path: str, source_label: str = "unknown"):
                         if service_el is not None
                         else "-"
                     ),
-                    "script_output": "; ".join(
-                        s.attrib.get("output", "") for s in port.findall("script")
-                    )
-                    or "-",
+                    "script_output": format_script_output(raw_output),
                     "source": source_label,
                 }
 
@@ -223,6 +316,12 @@ def get_wide_fields():
 
 def should_merge_entries():
     return True
+
+
+def postprocess_result(entry):
+    if "script_output" in entry:
+        entry["script_output"] = format_script_output(entry["script_output"])
+    return entry
 
 
 if __name__ == "__main__":

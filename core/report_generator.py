@@ -7,6 +7,7 @@ import argparse
 import importlib
 import json
 import logging
+import re
 import shutil
 import textwrap
 from collections import OrderedDict, defaultdict
@@ -27,7 +28,6 @@ OUTPUT_DIR = os.path.join(ROOT_DIR, "reports")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
-CATEGORY_KEYWORDS_PATH = os.path.join(ROOT_DIR, "config", "category_keywords.json")
 
 with open(CONFIG_PATH, "r") as f:
     CONFIG = json.load(f)
@@ -44,6 +44,57 @@ def connect_to_db():
         host=DB_CONFIG["POSTGRES_HOST"],
         port=DB_CONFIG["POSTGRES_PORT"],
     )
+
+
+def highlight_keywords(text):
+    if not isinstance(text, str):
+        return text
+
+    lines = text.splitlines()
+    html = []
+    current_sublist = []
+    current_title = None
+
+    def flush():
+        nonlocal current_sublist, current_title
+        if current_title and current_sublist:
+            html.append(f"<li>{current_title}<ul>")
+            for item in current_sublist:
+                html.append(f"<li>{item}</li>")
+            html.append("</ul></li>")
+        elif current_title:
+            html.append(f"<li>{current_title}</li>")
+        elif current_sublist:
+            html.append("<ul>")
+            for item in current_sublist:
+                html.append(f"<li>{item}</li>")
+            html.append("</ul>")
+        current_title = None
+        current_sublist = []
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            flush()
+            continue
+
+        if line.startswith("[") and line.endswith("]"):
+            flush()
+            html.append(f"<strong>{line}</strong>")
+        elif re.match(r"^[A-Za-z0-9_.:-]+:$", line):
+            flush()
+            current_title = line.rstrip(":")
+        else:
+            current_sublist.append(line)
+
+    flush()
+    return "<ul>\n" + "\n".join(html) + "\n</ul>"
+
+
+def get_jinja_env():
+    env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
+    env.filters["highlight_keywords"] = highlight_keywords
+    return env
 
 
 def categorize_results(entries):
@@ -68,7 +119,7 @@ def categorize_results(entries):
     return structured, global_meta
 
 
-def sort_categories(structured):
+def sort_categories_by_priority(raw_results):
     priority = {
         "Network Security": 0,
         "Application Security": 1,
@@ -80,41 +131,9 @@ def sort_categories(structured):
         "Cloud & API Exposure": 7,
         "General Info": 99,
     }
-
-    ip_targets = []
-    domain_targets = []
-
-    for target in structured:
-        try:
-            import ipaddress
-
-            ipaddress.ip_address(target)
-            ip_targets.append(target)
-        except ValueError:
-            domain_targets.append(target)
-
-    ip_targets.sort()
-    domain_targets.sort()
-    target_order = ip_targets + domain_targets
-
-    sorted_targets = OrderedDict()
-    for target in target_order:
-        if target not in structured:
-            continue
-
-        categories = structured[target]
-        sorted_cats = OrderedDict()
-
-        if "__meta__" in categories:
-            sorted_cats["__meta__"] = categories["__meta__"]
-
-        other_cats = {k: v for k, v in categories.items() if k != "__meta__"}
-        for k in sorted(other_cats, key=lambda x: priority.get(x, 50)):
-            sorted_cats[k] = other_cats[k]
-
-        sorted_targets[target] = sorted_cats
-
-    return sorted_targets
+    return OrderedDict(
+        sorted(raw_results.items(), key=lambda item: priority.get(item[0], 50))
+    )
 
 
 def load_and_categorize_results():
@@ -156,26 +175,10 @@ def load_and_categorize_results():
     return categorize_results(raw_entries)
 
 
-def sort_categories_by_priority(raw_results):
-    priority = {
-        "Network Security": 0,
-        "Application Security": 1,
-        "DNS Health": 2,
-        "Vulnerability Scan": 3,
-        "Web Catalog & Crawl": 4,
-        "OSINT / Metadata": 5,
-        "Database Security": 6,
-        "Cloud & API Exposure": 7,
-        "General Info": 99,
-    }
-    return OrderedDict(
-        sorted(raw_results.items(), key=lambda item: priority.get(item[0], 50))
-    )
-
-
 def render_html(results, output_path, meta):
     logging.info(f"Поиск шаблона в: {TEMPLATES_DIR}")
-    env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
+    env = get_jinja_env()
+
     try:
         template = env.get_template("report.html.j2")
     except Exception as e:
@@ -323,7 +326,7 @@ def show_in_terminal(results):
                 raw_values = [d.get(k, "-") for k in keys]
                 if all(v in ["-", None, ""] for v in raw_values):
                     continue
-                row_values = [wrap_cell(v, width=40) for v in raw_values]
+                row_values = [str(v) for v in raw_values]
                 table.add_row(*row_values)
 
             console.print(table)
@@ -332,6 +335,20 @@ def show_in_terminal(results):
 def main(format=None, timestamp=None, clear_reports=False):
     raw_results, meta = load_and_categorize_results()
     results = sort_categories_by_priority(raw_results)
+
+    for target_data in results.values():
+        for plugin_name, plugin_data in target_data.items():
+            try:
+                plugin_module = importlib.import_module(f"plugins.{plugin_name}")
+                if hasattr(plugin_module, "postprocess_result"):
+                    for entry in plugin_data:
+                        if isinstance(entry.get("data"), list):
+                            entry["data"] = [
+                                plugin_module.postprocess_result(row)
+                                for row in entry["data"]
+                            ]
+            except Exception as e:
+                logging.warning(f"Ошибка при постобработке плагина {plugin_name}: {e}")
 
     if not timestamp:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -35,9 +35,8 @@
         <h3>{{ module_name }}</h3>
 
         {% set exclude_keys = ["severity", "created_at", "plugin"] %}
-
-        {# Собрать все строки из всех entries[*].data #}
         {% set all_rows = [] %}
+
         {% for entry in entries %}
         {% if entry["data"] is mapping %}
         {% set _ = all_rows.append(entry["data"]) %}
@@ -78,16 +77,13 @@
                 </tr>
             </thead>
             <tbody>
-                {# Удаление дубликатов и приоритизация источников #}
                 {% set seen = {} %}
                 {% for row in all_rows %}
                 {% set key = (row.get("port", ""), row.get("protocol", ""), row.get("service_name", "")) %}
                 {% if key not in seen %}
                 {% set _ = seen.update({key: row}) %}
-                {% else %}
-                {% if row.get("source") == "Both" %}
+                {% elif row.get("source") == "Both" %}
                 {% set _ = seen.update({key: row}) %}
-                {% endif %}
                 {% endif %}
                 {% endfor %}
 
@@ -100,7 +96,13 @@
                 {% if has_real_data %}
                 <tr>
                     {% for key in column_order.keys %}
+                    {% if key == "script_output" %}
+                    <td class="script-output">
+                        <pre>{{ row[key] if row[key] else "-" }}</pre>
+                    </td>
+                    {% else %}
                     <td>{{ row[key] if row[key] else "-" }}</td>
+                    {% endif %}
                     {% endfor %}
                 </tr>
                 {% endif %}
