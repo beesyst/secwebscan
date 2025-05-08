@@ -24,38 +24,11 @@
       "enabled": true,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
-      "level": "easy",
-      "levels": {
-        "custom": {
-          "ip": "",
-          "http": "",
-          "https": ""
-        },
-        "easy": {
-          "ip": "-T4 -F -sS -Pn",
-          "http": "-T4 -sS -Pn -p 80",
-          "https": "-T4 -sS -Pn -p 443 --script ssl-cert,ssl-enum-ciphers"
-        },
-        "middle": {
-          "ip": "-T4 -sS -sV -Pn --open --top-ports 1000",
-          "http": "-T4 -sS -sV -Pn --open -p 80,8080,8000",
-          "https": "-T4 -sS -sV -Pn --open -p 443,8443 --script ssl-cert,ssl-enum-ciphers"
-        },
-        "hard": {
-          "ip": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln\"",
-          "http": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln,http-fetch\" --script-args \"http-fetch.directory=/tmp\" -p 80",
-          "https": "-T4 -sS -sV -O -Pn --script \"default,safe,vuln,ssl-cert,ssl-enum-ciphers,http-fetch\" --script-args \"http-fetch.directory=/tmp\" -p 443"
-        },
-        "extreme": {
-          "ip": "-T4 -p- -sS -sV -O -Pn --script \"default,safe,vuln,discovery and not targets-asn and not eap-info and not http-fetch and not http-passwd and not http-robtex-shared-ns and not hostmap-robtex and not http-vuln-cve2013-7091\" --script-args \"http-fetch.directory=/tmp\" --max-retries 2 --host-timeout 5m",
-          "http": "-T4 -p 80 -sS -sV -O -Pn --script \"default,safe,vuln,discovery and not targets-asn and not eap-info and not http-fetch and not http-passwd and not http-robtex-shared-ns and not hostmap-robtex and not http-vuln-cve2013-7091\" --script-args \"http-fetch.directory=/tmp\" --max-retries 2 --host-timeout 5m",
-          "https": "-T4 -p 443 -sS -sV -O -Pn --script \"default,safe,vuln,discovery,ssl-cert,ssl-enum-ciphers and not targets-asn and not eap-info and not http-fetch and not http-passwd and not http-robtex-shared-ns and not hostmap-robtex and not http-vuln-cve2013-7091\" --script-args \"http-fetch.directory=/tmp\" --max-retries 2 --host-timeout 5m"
-        }
-      }
+      "level": "hard"
     },
     {
       "name": "nikto",
-      "enabled": true,
+      "enabled": false,
       "category": "Application Security",
       "install": [
         "apt-get update",
@@ -69,24 +42,34 @@
       "level": "easy",
       "levels": {
         "custom": {
-          "ip": "",
-          "http": ""
+          "ip_http": "",
+          "ip_https": "",
+          "domain_http": "",
+          "domain_https": ""
         },
         "easy": {
-          "ip": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no",
-          "http": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no"
+          "ip_http": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no -p 80",
+          "ip_https": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no -p 443 -ssl",
+          "domain_http": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no",
+          "domain_https": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no -ssl"
         },
         "middle": {
-          "ip": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no",
-          "http": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no"
+          "ip_http": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no -p 80",
+          "ip_https": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no -p 443 -ssl",
+          "domain_http": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no",
+          "domain_https": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no -ssl"
         },
         "hard": {
-          "ip": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ssl -ask no",
-          "http": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no"
+          "ip_http": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -p 80",
+          "ip_https": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -p 443 -ssl",
+          "domain_http": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no",
+          "domain_https": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -ssl"
         },
         "extreme": {
-          "ip": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ssl -Plugins ALL -ask no",
-          "http": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no"
+          "ip_http": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no -p 80",
+          "ip_https": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no -p 443 -ssl",
+          "domain_http": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no",
+          "domain_https": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no -ssl"
         }
       }
     },
