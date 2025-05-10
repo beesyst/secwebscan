@@ -292,7 +292,7 @@ def normalize_ports(port_list):
     return ",".join(normalized)
 
 
-async def scan(plugin=None, config=None, debug=False):
+async def scan(config):
     ip = config.get("scan_config", {}).get("target_ip")
     domain = config.get("scan_config", {}).get("target_domain")
     plugin_config = next(
@@ -325,16 +325,13 @@ async def scan(plugin=None, config=None, debug=False):
                         if "args" in s and s["args"]:
                             script_args.append(s["args"].replace('"', "'"))
 
-                script_str = (
-                    f'--script "{",".join(script_names)}"' if script_names else ""
-                )
-                args_str = (
-                    f'--script-args "{",".join(script_args)}"' if script_args else ""
-                )
-
-                full_args = (
-                    f"{proto_conf['flags']} {ports_str} {script_str} {args_str}".strip()
-                )
+                parts = [
+                    proto_conf["flags"],
+                    ports_str,
+                    f"--script {','.join(script_names)}" if script_names else "",
+                    f"--script-args {','.join(script_args)}" if script_args else "",
+                ]
+                full_args = " ".join(part for part in parts if part).strip()
                 tasks.append(asyncio.to_thread(run_nmap, ip, f"ip_{proto}", full_args))
                 sources.append(f"ip_{proto}")
 
@@ -424,5 +421,5 @@ def postprocess_result(entry):
 if __name__ == "__main__":
     with open(CONFIG_PATH) as f:
         CONFIG = json.load(f)
-    result = asyncio.run(scan(config=CONFIG, debug=True))
+    result = asyncio.run(scan(CONFIG))
     print(json.dumps(result, indent=2, ensure_ascii=False))

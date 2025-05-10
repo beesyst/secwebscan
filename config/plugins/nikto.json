@@ -1,0 +1,112 @@
+{
+  "levels": {
+    "custom": {
+      "ip": {},
+      "domain": {}
+    },
+    "easy": {
+      "ip": {
+        "http": {
+          "ports": [80],
+          "tuning": "2,4,5",
+          "flags": "-maxtime 100 -nointeractive -Display P -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "2,4,5",
+          "flags": "-maxtime 100 -nointeractive -Display P -ask no -ssl"
+        }
+      },
+      "domain": {
+        "http": {
+          "ports": [80],
+          "tuning": "2,4,5",
+          "flags": "-maxtime 100 -nointeractive -Display P -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "2,4,5",
+          "flags": "-maxtime 100 -nointeractive -Display P -ask no -ssl"
+        }
+      }
+    },
+    "middle": {
+      "ip": {
+        "http": {
+          "ports": [80],
+          "tuning": "1,2,3,4,5",
+          "flags": "-Display V -nointeractive -followredirects -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "1,2,3,4,5",
+          "flags": "-Display V -nointeractive -followredirects -ask no -ssl"
+        }
+      },
+      "domain": {
+        "http": {
+          "ports": [80],
+          "tuning": "1,2,3,4,5",
+          "flags": "-Display V -nointeractive -followredirects -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "1,2,3,4,5",
+          "flags": "-Display V -nointeractive -followredirects -ask no -ssl"
+        }
+      }
+    },
+    "hard": {
+      "ip": {
+        "http": {
+          "ports": [80],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c",
+          "flags": "-Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c",
+          "flags": "-Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -ssl"
+        }
+      },
+      "domain": {
+        "http": {
+          "ports": [80],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c",
+          "flags": "-Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c",
+          "flags": "-Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -ssl"
+        }
+      }
+    },
+    "extreme": {
+      "ip": {
+        "http": {
+          "ports": [80],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c,x",
+          "flags": "-Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c,x",
+          "flags": "-Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ask no -ssl"
+        }
+      },
+      "domain": {
+        "http": {
+          "ports": [80],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c,x",
+          "flags": "-Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ask no"
+        },
+        "https": {
+          "ports": [443],
+          "tuning": "1,2,3,4,5,6,7,8,9,0,a,b,c,x",
+          "flags": "-Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -ask no -ssl"
+        }
+      }
+    }
+  }
+}

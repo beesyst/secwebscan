@@ -9,6 +9,7 @@ from core.logger_plugin import setup_plugin_logger
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
+NIKTO_LEVELS_PATH = os.path.join(ROOT_DIR, "config", "plugins", "nikto.json")
 
 container_log = logging.getLogger()
 plugin_log = setup_plugin_logger("nikto")
@@ -23,35 +24,49 @@ def run_nikto(target: str, suffix: str, args: str):
 
     container_log.info(f"Создан временный файл для Nikto: {output_path}")
 
-    cmd = f"nikto -h {target} {args} -o {output_path} -Format json"
-    container_log.info(f"Запуск Nikto на {target}: {cmd}")
+    cmd = (
+        ["nikto", "-h", target]
+        + args.strip().split()
+        + ["-Format", "json", "-o", output_path]
+    )
+    container_log.info(f"Запуск Nikto на {target}: {' '.join(cmd)}")
 
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
-    log_parts = [f"Запуск Nikto на {target}: {cmd}"]
-
+    log_parts = [f"Запуск Nikto на {target}: {' '.join(cmd)}"]
     if result.stdout.strip():
         log_parts.append(result.stdout.strip())
     if result.stderr.strip():
         log_parts.append(f"[STDERR]:\n{result.stderr.strip()}")
-
     plugin_log.info("\n".join(log_parts))
 
     if result.returncode != 0:
         raise RuntimeError(f"Nikto завершился с ошибкой: {result.stderr.strip()}")
 
-    if not os.path.exists(output_path) or os.stat(output_path).st_size == 0:
-        raise RuntimeError(
-            "Nikto не создал JSON-файл или файл пустой. "
-            "Возможно, превышено время выполнения или неправильные флаги."
-        )
+    if not os.path.exists(output_path):
+        raise RuntimeError("Nikto не создал JSON-файл")
+
+    with open(output_path, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+
+    if not content:
+        raise RuntimeError("Nikto JSON-файл пустой (0 байт)")
+
+    try:
+        data = json.loads(content)
+        if not data:
+            container_log.warning(
+                "Nikto завершился без уязвимостей — JSON пустой список."
+            )
+    except json.JSONDecodeError:
+        raise RuntimeError("Nikto вернул некорректный JSON")
 
     return output_path
 
 
-def parse(json_path: str, source_label: str = "Domain"):
+def parse(json_path: str, source_label: str = "unknown"):
     try:
-        with open(json_path, "r") as f:
+        with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         if not data or not isinstance(data, list):
@@ -93,27 +108,41 @@ def should_merge_entries():
     return False
 
 
-async def scan(plugin=None, config=None, debug=False):
+def build_args(flags: str, ports: list[int], tuning: str) -> str:
+    port_str = f"-p {','.join(map(str, ports))}" if ports else ""
+    tuning_str = f"-Tuning {tuning}" if tuning else ""
+    return f"{tuning_str} {flags} {port_str}".strip()
+
+
+async def scan(config):
     ip = config.get("scan_config", {}).get("target_ip")
     domain = config.get("scan_config", {}).get("target_domain")
     plugin_config = next(
         (p for p in config.get("plugins", []) if p["name"] == "nikto"), {}
     )
     level = plugin_config.get("level", "easy")
-    level_config = plugin_config.get("levels", {}).get(level, {})
+
+    with open(NIKTO_LEVELS_PATH) as f:
+        level_config = json.load(f)["levels"].get(level, {})
 
     tasks = []
     sources = []
 
-    if ip and "ip" in level_config:
-        tasks.append(asyncio.to_thread(run_nikto, ip, "ip", level_config["ip"]))
-        sources.append("IP")
+    def enqueue_tasks(target, target_type):
+        for proto in ["http", "https"]:
+            conf = level_config.get(target_type, {}).get(proto, {})
+            if conf.get("flags"):
+                args = build_args(
+                    conf.get("flags", ""), conf.get("ports", []), conf.get("tuning", "")
+                )
+                suffix = f"{target_type}_{proto}"
+                tasks.append(asyncio.to_thread(run_nikto, target, suffix, args))
+                sources.append(suffix)
 
-    if domain and "http" in level_config:
-        tasks.append(
-            asyncio.to_thread(run_nikto, domain, "domain_http", level_config["http"])
-        )
-        sources.append("Domain")
+    if ip:
+        enqueue_tasks(ip, "ip")
+    if domain:
+        enqueue_tasks(domain, "domain")
 
     results = await asyncio.gather(*tasks)
 
@@ -126,5 +155,5 @@ async def scan(plugin=None, config=None, debug=False):
 if __name__ == "__main__":
     with open(CONFIG_PATH) as f:
         CONFIG = json.load(f)
-    result = asyncio.run(scan(config=CONFIG, debug=True))
+    result = asyncio.run(scan(CONFIG))
     print(json.dumps(result, indent=2, ensure_ascii=False))

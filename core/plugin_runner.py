@@ -95,7 +95,7 @@ async def run_plugin(plugin):
 
         if hasattr(loaded_plugin, "scan"):
             logging.info(f"Запуск функции scan() из плагина {name}...")
-            temp_paths = await loaded_plugin.scan(plugin, CONFIG, debug=False)
+            temp_paths = await loaded_plugin.scan(CONFIG)
 
             if isinstance(temp_paths, list):
                 generated_temp_paths.extend(temp_paths)

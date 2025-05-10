@@ -24,7 +24,7 @@
       "enabled": true,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
-      "level": "hard"
+      "level": "easy"
     },
     {
       "name": "nikto",
@@ -39,39 +39,7 @@
         "echo 'perl nikto.pl \"$@\"' >> /usr/local/bin/nikto",
         "chmod +x /usr/local/bin/nikto"
       ],
-      "level": "easy",
-      "levels": {
-        "custom": {
-          "ip_http": "",
-          "ip_https": "",
-          "domain_http": "",
-          "domain_https": ""
-        },
-        "easy": {
-          "ip_http": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no -p 80",
-          "ip_https": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no -p 443 -ssl",
-          "domain_http": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no",
-          "domain_https": "-Tuning 2,4,5 -maxtime 60 -nointeractive -Display P -ask no -ssl"
-        },
-        "middle": {
-          "ip_http": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no -p 80",
-          "ip_https": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no -p 443 -ssl",
-          "domain_http": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no",
-          "domain_https": "-Tuning 12345 -Display V -nointeractive -followredirects -ask no -ssl"
-        },
-        "hard": {
-          "ip_http": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -p 80",
-          "ip_https": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -p 443 -ssl",
-          "domain_http": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no",
-          "domain_https": "-Tuning 1234567890abc -Display V -maxtime 120 -followredirects -evasion 1,2,3 -ask no -ssl"
-        },
-        "extreme": {
-          "ip_http": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no -p 80",
-          "ip_https": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no -p 443 -ssl",
-          "domain_http": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no",
-          "domain_https": "-Tuning 1234567890abcx -Display VE -maxtime 300 -followredirects -evasion 1,2,3,4,5,6,7,8 -Plugins ALL -ask no -ssl"
-        }
-      }
+      "level": "easy"
     },
     {
       "name": "dig",
