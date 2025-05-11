@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import subprocess
 import tempfile
 
@@ -13,6 +14,10 @@ NIKTO_LEVELS_PATH = os.path.join(ROOT_DIR, "config", "plugins", "nikto.json")
 
 container_log = logging.getLogger()
 plugin_log = setup_plugin_logger("nikto")
+
+
+def fix_invalid_json_escapes(s):
+    return re.sub(r'\\(?!["\\/bfnrtu])', r"\\\\", s)
 
 
 def run_nikto(target: str, suffix: str, args: str):
@@ -53,6 +58,7 @@ def run_nikto(target: str, suffix: str, args: str):
         raise RuntimeError("Nikto JSON-файл пустой (0 байт)")
 
     try:
+        content = fix_invalid_json_escapes(content)
         data = json.loads(content)
         if not data:
             container_log.warning(
@@ -144,12 +150,16 @@ async def scan(config):
     if domain:
         enqueue_tasks(domain, "domain")
 
-    results = await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    return [
-        {"plugin": "nikto", "path": path, "source": src}
-        for path, src in zip(results, sources)
-    ]
+    valid = []
+    for path, src in zip(results, sources):
+        if isinstance(path, Exception):
+            container_log.error(f"Nikto ошибка в {src}: {path}")
+        else:
+            valid.append({"plugin": "nikto", "path": path, "source": src})
+
+    return valid
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@
     },
     {
       "name": "nikto",
-      "enabled": false,
+      "enabled": true,
       "category": "Application Security",
       "install": [
         "apt-get update",

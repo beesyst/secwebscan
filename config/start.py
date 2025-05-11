@@ -275,13 +275,11 @@ def run_plugins(temp_files_path):
     )
     spinner_thread.start()
 
-    result = subprocess.run(
-        cmd,
-        shell=True,
-    )
-
-    stop_event.set()
-    spinner_thread.join()
+    try:
+        result = subprocess.run(cmd, shell=True)
+    finally:
+        stop_event.set()
+        spinner_thread.join()
 
     if result.returncode != 0:
         print("❌ Ошибка выполнения плагинов")
@@ -290,7 +288,6 @@ def run_plugins(temp_files_path):
 
     logging.info(f"Сохранены пути временных файлов: {temp_files_path}")
     print("✅ Плагины успешно завершили выполнение.")
-    logging.info("Плагины завершили выполнение.")
 
 
 def run_collector(temp_files_path):
