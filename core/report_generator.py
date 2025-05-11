@@ -175,7 +175,7 @@ def load_and_categorize_results():
     return categorize_results(raw_entries)
 
 
-def render_html(results, output_path, meta):
+def render_html(results, output_path, meta, duration_map):
     logging.info(f"Поиск шаблона в: {TEMPLATES_DIR}")
     env = get_jinja_env()
 
@@ -193,6 +193,7 @@ def render_html(results, output_path, meta):
         report_theme=theme,
         config=CONFIG,
         meta=meta,
+        duration_map=duration_map,
     )
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -214,7 +215,7 @@ def wrap_cell(value, width=80):
     )
 
 
-def show_in_terminal(results):
+def show_in_terminal(results, duration_map):
     terminal_width = shutil.get_terminal_size((160, 20)).columns
     console = Console(width=terminal_width)
 
@@ -330,9 +331,35 @@ def show_in_terminal(results):
                 table.add_row(*row_values)
 
             console.print(table)
+            if plugin_name in duration_map:
+                console.print(
+                    f"[italic cyan]⏱️ Время сканирования: {duration_map[plugin_name]} сек.[/italic cyan]\n"
+                )
 
 
 def main(format=None, timestamp=None, clear_reports=False):
+    TEMP_PATH = os.path.join("/tmp", f"temp_files_{timestamp}.json")
+    duration_map = {}
+
+    if os.path.exists(TEMP_PATH):
+        try:
+            with open(TEMP_PATH, "r", encoding="utf-8") as f:
+                temp_data = json.load(f)
+
+            # Новый формат: один файл с двумя ключами
+            if isinstance(temp_data, dict):
+                duration_list = temp_data.get("durations", [])
+                for item in duration_list:
+                    if (
+                        isinstance(item, dict)
+                        and "plugin" in item
+                        and "duration" in item
+                    ):
+                        duration_map[item["plugin"]] = item["duration"]
+
+        except Exception as e:
+            logging.warning(f"Не удалось загрузить durations из {TEMP_PATH}: {e}")
+
     raw_results, meta = load_and_categorize_results()
     results = sort_categories_by_priority(raw_results)
 
@@ -351,7 +378,8 @@ def main(format=None, timestamp=None, clear_reports=False):
                 logging.warning(f"Ошибка при постобработке плагина {plugin_name}: {e}")
 
     if not timestamp:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        logging.error("Не передан параметр --timestamp, и он обязателен.")
+        return
 
     formats = CONFIG.get("scan_config", {}).get("report_formats", ["html"])
     if format:
@@ -368,7 +396,7 @@ def main(format=None, timestamp=None, clear_reports=False):
                 logging.warning(f"Не удалось удалить файл {filename}: {e}")
 
     if "terminal" in formats:
-        show_in_terminal(results)
+        show_in_terminal(results, duration_map)
 
     if "html" in formats:
         logging.info("Проверка доступности шаблона...")
@@ -389,7 +417,7 @@ def main(format=None, timestamp=None, clear_reports=False):
             return
 
         html_output = os.path.join(OUTPUT_DIR, f"report_{timestamp}.html")
-        render_html(results, html_output, meta)
+        render_html(results, html_output, meta, duration_map)
 
         if "pdf" in formats:
             pdf_output = os.path.join(OUTPUT_DIR, f"report_{timestamp}.pdf")

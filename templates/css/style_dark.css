@@ -105,3 +105,19 @@ pre {
     color: #666;
     text-align: center;
 }
+.duration {
+    text-align: right;
+    color: #999;
+    margin-top: 12px;
+    font-size: 13px;
+    font-family: "Courier New", Courier, monospace;
+}
+
+.duration strong {
+    color: #fff;
+    font-weight: bold;
+}
+.duration span {
+    font-weight: normal;
+}
+

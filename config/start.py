@@ -278,7 +278,6 @@ def run_plugins(temp_files_path):
     result = subprocess.run(
         cmd,
         shell=True,
-        cwd=ROOT_DIR,
     )
 
     stop_event.set()
@@ -310,12 +309,12 @@ def run_collector(temp_files_path):
         logging.error("Ошибка выполнения collector.py")
 
 
-def generate_reports():
+def generate_reports(timestamp):
     print("📄 Генерация отчетов...")
     logging.info("Генерация отчётов начата.")
     formats = CONFIG.get("scan_config", {}).get("report_formats", ["html"])
     open_report = CONFIG.get("scan_config", {}).get("open_report", False)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     html_report_name = f"report_{timestamp}.html"
     html_report_path = os.path.join(ROOT_DIR, "reports", html_report_name)
 
@@ -386,7 +385,7 @@ def main():
     )
     run_plugins(temp_files_path)
     run_collector(temp_files_path)
-    generate_reports()
+    generate_reports(timestamp)
     post_scan_chown()
     print("✅ SecWebScan завершил выполнение!")
     logging.info("==== SecWebScan завершён успешно ====")

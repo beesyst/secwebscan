@@ -9,6 +9,7 @@ import importlib.util
 import json
 import logging
 import shutil
+import time
 
 from core.logger_container import setup_container_logger
 from core.logger_plugin import clear_plugin_logs_if_needed
@@ -28,6 +29,7 @@ TARGET_IP = SCAN_CONFIG.get("target_ip")
 TARGET_DOMAIN = SCAN_CONFIG.get("target_domain")
 
 generated_temp_paths = []
+duration_map = {}
 
 if not TARGET_IP and not TARGET_DOMAIN:
     raise ValueError(
@@ -95,14 +97,24 @@ async def run_plugin(plugin):
 
         if hasattr(loaded_plugin, "scan"):
             logging.info(f"Запуск функции scan() из плагина {name}...")
+            start = time.time()
             temp_paths = await loaded_plugin.scan(CONFIG)
+            duration_map[name] = round(time.time() - start, 2)
+            logging.info(
+                f"Плагин {name} успешно завершил работу за {duration_map[name]} сек."
+            )
 
             if isinstance(temp_paths, list):
-                generated_temp_paths.extend(temp_paths)
+                for path in temp_paths:
+                    if isinstance(path, str):
+                        generated_temp_paths.append({"plugin": name, "path": path})
+                    elif isinstance(
+                        path, dict
+                    ):  # защита, если плагин уже вернул словари
+                        generated_temp_paths.append(path)
             elif isinstance(temp_paths, str):
-                generated_temp_paths.append(temp_paths)
+                generated_temp_paths.append({"plugin": name, "path": temp_paths})
 
-            logging.info(f"Плагин {name} успешно завершил работу.")
         else:
             logging.error(f"Плагин {name} не содержит функцию scan(). Пропускаем.")
     except Exception as e:
@@ -131,10 +143,19 @@ if __name__ == "__main__":
     paths = asyncio.run(main())
 
     try:
+        combined_data = {
+            "paths": paths,
+            "durations": [
+                {"plugin": k, "duration": v} for k, v in duration_map.items()
+            ],
+        }
+
         with open(args.output, "w", encoding="utf-8") as f:
-            json.dump(paths, f, ensure_ascii=False)
-        logging.info(f"Сохранены пути временных файлов: {args.output}")
+            json.dump(combined_data, f, ensure_ascii=False, indent=2)
+
+        logging.info(f"Сохранены пути и duration-данные: {args.output}")
+
     except Exception as e:
-        print(f"❌ Ошибка записи в {args.output}: {e}")
-        logging.error(f"Ошибка записи JSON-файла: {e}")
+        print(f"❌ Ошибка записи JSON: {e}")
+        logging.error(f"Ошибка записи JSON-файлов: {e}")
         exit(1)

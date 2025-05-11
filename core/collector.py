@@ -205,7 +205,7 @@ def process_temp_files(cursor, temp_files):
                 logging.warning(f"Ошибка вставки данных из {plugin_name}: {e}")
                 continue
 
-        logging.info(f"[{plugin_name}] Добавлено записей: {len(results)}")
+        logging.info(f"[{plugin_name}] Добавлено записей: {total_added}")
 
     return total_added
 
@@ -251,7 +251,14 @@ if __name__ == "__main__":
         if os.path.exists(args.temp_file):
             try:
                 with open(args.temp_file, "r", encoding="utf-8") as f:
-                    temp_files = json.load(f)
+                    temp_data = json.load(f)
+
+                if isinstance(temp_data, dict) and "paths" in temp_data:
+                    temp_files = temp_data["paths"]
+                else:
+                    logging.error("Файл не содержит ключ 'paths'. Проверь формат.")
+                    exit(1)
+
                 collect(temp_files=temp_files)
             except Exception as e:
                 logging.error(f"Ошибка при чтении временного файла: {e}")
