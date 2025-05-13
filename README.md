@@ -1,8 +1,6 @@
-# 🛡️ SecWebScan
+# 🛡️ BeeScan
 
-## 📌 Project Description
-
-**SecWebScan** is a modular platform for automated network and web security analysis. It supports plugin-based tools, result collection and storage, report generation, and centralized flexible configuration. Its architecture is easily extensible for various audit and monitoring needs.
+**BeeScan** is a modular platform for comprehensive IT infrastructure security auditing. It supports integration of external tools as plugins, automated result collection and structuring, multi-format report generation, and flexible centralized configuration. The architecture enables analysis of networks, web applications, DNS, and APIs, and is scalable for any DevSecOps, penetration testing, or monitoring tasks.
 
 ## ⚙️ Key Features
 
@@ -56,14 +54,14 @@
 6. **Configuration Module (`config/config.json`)** — defines scanning targets (`target_ip`, `target_domain`), active plugins, scan levels, report formats, theme (`light` / `dark`), and behavior (`open_report`, `clear_db`, etc.).
 7. **Startup Wrapper (`start.py`)** — single entry point that orchestrates Docker environment setup, database launch, scanner execution, data collection, and report generation with progress indicators.
 8. **Docker Environment** — isolated and fully self-contained environment:
-   - `secwebscan_base` — container with all scanners and logic,
+   - `beescan_base` — container with all scanners and logic,
    - `postgres` — separate container for the database,
-   - `secwebscan_network` — bridge network connecting the components.
+   - `beescan_network` — bridge network connecting the components.
 
 ### Project Structure
 
 ```
-secwebscan/
+beescan/
 ├── config/                  # Configuration
 │   ├── config.json          # Main config file
 │   └── start.py             # Main Python launch script
@@ -101,10 +99,10 @@ secwebscan/
 ### System Launch
 
 1. The system starts via `start.sh`.
-2. Checks for Docker and the `secwebscan_network`.
+2. Checks for Docker and the `beescan_network`.
 3. Launches the PostgreSQL container (if not already running).
-4. Builds the `secwebscan-base` image (if not built yet).
-5. Starts the `secwebscan_base` container with mounted folders.
+4. Builds the `beescan-base` image (if not built yet).
+5. Starts the `beescan_base` container with mounted folders.
 6. Runs `plugin_runner.py` to scan targets.
 7. Saves result paths to a temporary JSON file.
 8. Launches `collector.py` to process results and write to the database.
@@ -156,8 +154,8 @@ secwebscan/
 ### Launching the Project
 
 ```bash
-git clone https://github.com/beesyst/secwebscan.git
-cd secwebscan
+git clone https://github.com/beesyst/beescan.git
+cd beescan
 bash start.sh
 ```
 
