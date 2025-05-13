@@ -29,11 +29,14 @@
 - **Rich** — terminal tables  
 - **WeasyPrint** — PDF generation
 
-### Integrated Tools
+### 🔌 Integrated Tools
 
-- **nmap** — a powerful network scanner and analyzer.  
-- **nikto** — a web server scanner to detect vulnerabilities.  
-- **dig** — CLI tool for DNS queries.
+| Tool    | Description                                                                 | Version                  |
+|---------|-----------------------------------------------------------------------------|--------------------------|
+| `nmap`  | Powerful network scanner for port discovery and service/version detection. | ![v](https://img.shields.io/badge/nmap-stable-blue) |
+| `nikto` | Web server scanner for detecting misconfigurations and vulnerabilities.    | ![v](https://img.shields.io/badge/nikto-2.5.0-blue) |
+| `dig`   | Command-line DNS lookup utility for querying name servers.                 | ![v](https://img.shields.io/badge/dig-bind9-blue)   |
+| `nuclei`| Fast vulnerability scanner based on YAML templates.                        | ![v](https://img.shields.io/badge/nuclei-v3.4.3-blue) |
 
 ## 🖧 Architecture
 
