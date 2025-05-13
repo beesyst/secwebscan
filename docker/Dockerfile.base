@@ -28,5 +28,5 @@ RUN python3 /tmp/install_plugins.py && \
 ENV TZ=UTC
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-COPY . /secwebscan
-WORKDIR /secwebscan
+COPY . /beescan
+WORKDIR /beescan

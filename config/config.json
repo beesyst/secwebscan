@@ -1,13 +1,13 @@
 {
   "database": {
-    "container_name": "secwebscan_postgres",
+    "container_name": "beescan_postgres",
     "POSTGRES_USER": "secscan",
     "POSTGRES_PASSWORD": "securepass",
-    "POSTGRES_DB": "secwebscan",
+    "POSTGRES_DB": "beescan",
     "POSTGRES_PORT": 5432,
-    "POSTGRES_HOST": "secwebscan_postgres"
+    "POSTGRES_HOST": "beescan_postgres"
   },
-  "docker_network": "secwebscan_network",
+  "docker_network": "beescan_network",
   "scan_config": {
     "target_ip": "64.227.103.24",
     "target_domain": "honey.scanme.sh",
@@ -21,7 +21,7 @@
   "plugins": [
     {
       "name": "nmap",
-      "enabled": false,
+      "enabled": true,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
       "level": "easy"
@@ -39,7 +39,7 @@
         "echo 'perl nikto.pl \"$@\"' >> /usr/local/bin/nikto",
         "chmod +x /usr/local/bin/nikto"
       ],
-      "level": "middle"
+      "level": "easy"
     },
     {
       "name": "dig",

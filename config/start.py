@@ -156,54 +156,54 @@ def start_postgres():
     exit(1)
 
 
-def ensure_secwebscan_base_image():
+def ensure_beescan_base_image():
     result = subprocess.run(
-        ["docker", "images", "-q", "secwebscan-base"],
+        ["docker", "images", "-q", "beescan-base"],
         stdout=subprocess.PIPE,
         text=True,
     )
     if not result.stdout.strip():
-        print("📦 Образ secwebscan-base не найден. Собираю...")
-        logging.info("Образ secwebscan-base не найден. Запуск сборки...")
+        print("📦 Образ beescan-base не найден. Собираю...")
+        logging.info("Образ beescan-base не найден. Запуск сборки...")
         success = run_command_with_spinner(
-            "docker build -t secwebscan-base -f docker/Dockerfile.base .",
+            "docker build -t beescan-base -f docker/Dockerfile.base .",
             "⏳ Сборка образа",
             cwd=ROOT_DIR,
         )
         if not success:
             print("❌ Сборка образа завершилась с ошибкой.")
-            logging.critical("Сборка secwebscan-base не удалась.")
+            logging.critical("Сборка beescan-base не удалась.")
             exit(1)
-        print("✅ Образ secwebscan-base собран успешно.")
-        logging.info("Сборка secwebscan-base завершена успешно.")
+        print("✅ Образ beescan-base собран успешно.")
+        logging.info("Сборка beescan-base завершена успешно.")
     else:
-        print("✅ Образ secwebscan-base существует.")
-        logging.info("Образ secwebscan-base найден.")
+        print("✅ Образ beescan-base существует.")
+        logging.info("Образ beescan-base найден.")
 
 
-def start_secwebscan_container():
+def start_beescan_container():
     result = subprocess.run(
-        ["docker", "ps", "-q", "--filter", "name=secwebscan_base"],
+        ["docker", "ps", "-q", "--filter", "name=beescan_base"],
         stdout=subprocess.PIPE,
         text=True,
     )
     if result.stdout.strip():
-        print("✅ Контейнер secwebscan_base уже работает.")
-        logging.info("Контейнер secwebscan_base уже запущен.")
+        print("✅ Контейнер beescan_base уже работает.")
+        logging.info("Контейнер beescan_base уже запущен.")
         return
 
     result_all = subprocess.run(
-        ["docker", "ps", "-aq", "--filter", "name=secwebscan_base"],
+        ["docker", "ps", "-aq", "--filter", "name=beescan_base"],
         stdout=subprocess.PIPE,
         text=True,
     )
     if result_all.stdout.strip():
-        print("🗑️ Обнаружен остановленный контейнер secwebscan_base. Удаляем...")
-        logging.info("Удаление остановленного контейнера secwebscan_base.")
-        subprocess.run(["docker", "rm", "-f", "secwebscan_base"])
+        print("🗑️ Обнаружен остановленный контейнер beescan_base. Удаляем...")
+        logging.info("Удаление остановленного контейнера beescan_base.")
+        subprocess.run(["docker", "rm", "-f", "beescan_base"])
 
-    print("📦 Контейнер secwebscan-base не найден. Запускаю...")
-    logging.info("Запуск контейнера secwebscan_base...")
+    print("📦 Контейнер beescan-base не найден. Запускаю...")
+    logging.info("Запуск контейнера beescan_base...")
 
     volumes = [
         "-v",
@@ -227,16 +227,16 @@ def start_secwebscan_container():
     ]
 
     success = run_command_with_spinner(
-        f"docker run -d --name secwebscan_base --network {NETWORK_NAME} "
+        f"docker run -d --name beescan_base --network {NETWORK_NAME} "
         + " ".join(volumes)
-        + " secwebscan-base tail -f /dev/null",
-        prefix="⏳ Запуск контейнера secwebscan_base...",
+        + " beescan-base tail -f /dev/null",
+        prefix="⏳ Запуск контейнера beescan_base...",
         cwd=ROOT_DIR,
     )
 
     if success:
-        print("✅ Контейнер secwebscan_base готов.")
-        logging.info("Контейнер secwebscan_base запущен успешно.")
+        print("✅ Контейнер beescan_base готов.")
+        logging.info("Контейнер beescan_base запущен успешно.")
 
 
 def purge_database():
@@ -244,7 +244,7 @@ def purge_database():
         print("🧹 Очистка базы данных перед сканированием...")
         logging.info("Очистка базы данных перед сканированием")
         run_command(
-            "docker exec secwebscan_base python3 /core/collector.py --purge-only",
+            "docker exec beescan_base python3 /core/collector.py --purge-only",
             hide_output=False,
         )
     else:
@@ -267,7 +267,7 @@ def run_plugins(temp_files_path):
     print("🔧 Запуск всех плагинов асинхронно...")
     logging.info("Запуск всех плагинов через docker exec plugin_runner.py")
 
-    cmd = f"docker exec secwebscan_base python3 /core/plugin_runner.py --output {temp_files_path}"
+    cmd = f"docker exec beescan_base python3 /core/plugin_runner.py --output {temp_files_path}"
 
     stop_event = threading.Event()
     spinner_thread = threading.Thread(
@@ -294,7 +294,7 @@ def run_collector(temp_files_path):
     print("📥 Сбор результатов в БД...")
     logging.info("Запуск collector.collect()")
 
-    cmd = f"docker exec secwebscan_base python3 /core/collector.py --temp-file {temp_files_path}"
+    cmd = f"docker exec beescan_base python3 /core/collector.py --temp-file {temp_files_path}"
 
     result = subprocess.run(
         cmd,
@@ -327,7 +327,7 @@ def generate_reports(timestamp):
         clear_flag = "--clear-reports" if i == 0 else ""
 
         success = run_command(
-            f"docker exec secwebscan_base python3 /core/report_generator.py --format {fmt} --timestamp {timestamp} {clear_flag}",
+            f"docker exec beescan_base python3 /core/report_generator.py --format {fmt} --timestamp {timestamp} {clear_flag}",
             hide_output=False,
         )
 
@@ -356,7 +356,7 @@ def post_scan_chown():
         user_id = os.getuid()
         group_id = os.getgid()
         run_command(
-            f"docker exec secwebscan_base chown -R {user_id}:{group_id} /reports",
+            f"docker exec beescan_base chown -R {user_id}:{group_id} /reports",
             hide_output=False,
         )
         print(f"✅ Права на /reports обновлены: {user_id}:{group_id}")
@@ -367,13 +367,13 @@ def post_scan_chown():
 
 
 def main():
-    print("🚀 Запуск SecWebScan...")
-    logging.info("==== SecWebScan запуск начат ====")
+    print("🚀 Запуск beescan...")
+    logging.info("==== beescan запуск начат ====")
     check_docker_installed()
     clean_docker_environment()
     start_postgres()
-    ensure_secwebscan_base_image()
-    start_secwebscan_container()
+    ensure_beescan_base_image()
+    start_beescan_container()
     purge_database()
     cleanup_tmp_files()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -384,8 +384,8 @@ def main():
     run_collector(temp_files_path)
     generate_reports(timestamp)
     post_scan_chown()
-    print("✅ SecWebScan завершил выполнение!")
-    logging.info("==== SecWebScan завершён успешно ====")
+    print("✅ beescan завершил выполнение!")
+    logging.info("==== beescan завершён успешно ====")
 
 
 if __name__ == "__main__":

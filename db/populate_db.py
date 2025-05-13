@@ -6,8 +6,8 @@ import psycopg2
 DB = {
     "user": os.getenv("POSTGRES_USER", "secweb_user"),
     "password": os.getenv("POSTGRES_PASSWORD", "secweb_pass"),
-    "db": os.getenv("POSTGRES_DB", "secwebscan"),
-    "host": os.getenv("POSTGRES_HOST", "secwebscan_postgres"),
+    "db": os.getenv("POSTGRES_DB", "beescan"),
+    "host": os.getenv("POSTGRES_HOST", "beescan_postgres"),
     "port": os.getenv("POSTGRES_PORT", "5432"),
 }
 

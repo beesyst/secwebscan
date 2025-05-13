@@ -1,22 +1,22 @@
 services:
   postgres:
     image: postgres:17.4
-    container_name: secwebscan_postgres
+    container_name: beescan_postgres
     environment:
       POSTGRES_USER: secscan
       POSTGRES_PASSWORD: securepass
-      POSTGRES_DB: secwebscan
+      POSTGRES_DB: beescan
     ports:
       - "5432:5432"
     volumes:
       - data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      secwebscan_network:
+      beescan_network:
 
 volumes:
   data:
 
 networks:
-  secwebscan_network:
+  beescan_network:
     external: true
