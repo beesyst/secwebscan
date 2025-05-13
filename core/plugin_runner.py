@@ -38,6 +38,20 @@ if not TARGET_IP and not TARGET_DOMAIN:
 
 
 def is_tool_installed(tool_name):
+    try:
+        plugin_path = os.path.join(PLUGINS_DIR, f"{tool_name}.py")
+        if not os.path.exists(plugin_path):
+            return False
+
+        spec = importlib.util.spec_from_file_location(tool_name, plugin_path)
+        plugin_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plugin_module)
+
+        if hasattr(plugin_module, "is_installed"):
+            return plugin_module.is_installed()
+    except Exception as e:
+        logging.warning(f"Не удалось проверить установлен ли {tool_name}: {e}")
+
     return shutil.which(tool_name) is not None
 
 

@@ -107,7 +107,7 @@
                     {% for key in column_order.keys %}
                     {% if key == "script_output" %}
                     <td class="script-output">
-                        <pre>{{ row[key] if row[key] else "-" }}</pre>
+                        <pre>{{ row[key] | e if row[key] else "-" }}</pre>
                     </td>
                     {% elif key == "references" %}
                     <td>
@@ -128,12 +128,12 @@
                     </td>
                     {% elif key == "msg" %}
                     <td>
-                        {{ row[key][:120] ~ ("..." if row[key]|length > 120 else "") if row[key] else "-" }}
+                        {{ (row[key][:120] ~ ("..." if row[key]|length > 120 else "")) | e if row[key] else "-" }}
                     </td>
                     {% elif key in ["source", "id"] %}
                     <td style="white-space: nowrap;">{{ row[key] if row[key] else "-" }}</td>
                     {% else %}
-                    <td>{{ row[key] if row[key] else "-" }}</td>
+                    <td>{{ row[key] | default("-") | e }}</td>
                     {% endif %}
                     {% endfor %}
                 </tr>

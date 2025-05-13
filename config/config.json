@@ -21,7 +21,7 @@
   "plugins": [
     {
       "name": "nmap",
-      "enabled": true,
+      "enabled": false,
       "category": "Network Security",
       "install": ["apt-get update", "apt-get install -y nmap"],
       "level": "easy"
@@ -39,7 +39,7 @@
         "echo 'perl nikto.pl \"$@\"' >> /usr/local/bin/nikto",
         "chmod +x /usr/local/bin/nikto"
       ],
-      "level": "easy"
+      "level": "middle"
     },
     {
       "name": "dig",

@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import tempfile
+from shutil import which
 
 from core.logger_plugin import setup_plugin_logger
 
@@ -16,8 +17,19 @@ container_log = logging.getLogger()
 plugin_log = setup_plugin_logger("nikto")
 
 
+def is_installed() -> bool:
+    return which("nikto") is not None and os.path.exists("/opt/nikto/program")
+
+
 def fix_invalid_json_escapes(s):
-    return re.sub(r'\\(?!["\\/bfnrtu])', r"\\\\", s)
+    try:
+        s = re.sub(r"\\(?![\"\\/bfnrtu])", r"\\\\", s)
+        s = s.replace("\r", "\\r").replace("\n", "\\n")
+        return s
+    except Exception as e:
+        raise RuntimeError(
+            f"Ошибка при очистке JSON от некорректных escape-символов: {e}"
+        )
 
 
 def run_nikto(target: str, suffix: str, args: str):
@@ -73,7 +85,9 @@ def run_nikto(target: str, suffix: str, args: str):
 def parse(json_path: str, source_label: str = "unknown"):
     try:
         with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            raw = f.read()
+            raw = fix_invalid_json_escapes(raw)
+            data = json.loads(raw)
 
         if not data or not isinstance(data, list):
             return []
