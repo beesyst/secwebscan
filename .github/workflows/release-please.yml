@@ -5,18 +5,18 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
-  release:
+  release-please:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Release Please
-        uses: google-github-actions/release-please-action@v4
+      - uses: googleapis/release-please-action@v4
         with:
           release-type: simple
-          package-name: your-project-name
+          package-name: beescan
           version-file: version.txt
           changelog-path: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
