@@ -1,0 +1,10 @@
+{
+  "release-type": "simple",
+  "packages": {
+    ".": {
+      "changelog-path": "CHANGELOG.md",
+      "version-file": "version.txt",
+      "package-name": "beescan"
+    }
+  }
+}

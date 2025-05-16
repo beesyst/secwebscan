@@ -15,8 +15,4 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          release-type: simple
-          package-name: beescan
-          version-file: version.txt
-          changelog-path: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
