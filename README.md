@@ -181,18 +181,18 @@ All parameters are set in `config.json`:
 ## 🗺️ To-Do
 
 <!--KANBAN_START-->
-| Ideas (6) | Todo (5) | In Progress (1) | Done (18) |
-|---|---|---|---|
-| AI-based vulnerability explanation & fix suggestion | PDF reports | Auto-update Kanban board in README from GitHub Projects | Expansion of scan complexity levels |
-| Vulnerability severity classification | Proxy integration (Tor/Chain) | &nbsp; | Scanner update check before run |
-| Live webhook notifications (Telegram, Discord, etc.) | Integrate dig | &nbsp; | Reports from PostgreSQL (HTML, Terminal) |
-| Scan targets import via CSV/JSON file | Integrate nuclei | &nbsp; | Asynchronous plugin execution |
-| Risk score computation per target | Multi-language support (RU/EN) | &nbsp; | Flexible configuration via config.json |
-| Prometheus/Grafana integration | &nbsp; | &nbsp; | Log and report cleanup via config flags |
-| &nbsp; | &nbsp; | &nbsp; | Static report structure with category grouping |
-| &nbsp; | &nbsp; | &nbsp; | Light/dark theme support for HTML reports via config |
-| &nbsp; | &nbsp; | &nbsp; | File/report permission control (chown) |
-| &nbsp; | &nbsp; | &nbsp; | Auto-opening HTML report after generation |
+| Todo (5) | In Progress (1) | Done (18) |
+| --- | --- | --- |
+| PDF reports | Auto-update Kanban board in README from GitHub Projects | Expansion of scan complexity levels |
+| Proxy integration (Tor/Chain) | &nbsp; | Scanner update check before run |
+| Integrate dig | &nbsp; | Reports from PostgreSQL (HTML, Terminal) |
+| Integrate nuclei | &nbsp; | Asynchronous plugin execution |
+| Multi-language support (RU/EN) | &nbsp; | Flexible configuration via config.json |
+| &nbsp; | &nbsp; | Log and report cleanup via config flags |
+| &nbsp; | &nbsp; | Static report structure with category grouping |
+| &nbsp; | &nbsp; | Light/dark theme support for HTML reports via config |
+| &nbsp; | &nbsp; | File/report permission control (chown) |
+| &nbsp; | &nbsp; | Auto-opening HTML report after generation |
 
 <!--KANBAN_END-->
 
