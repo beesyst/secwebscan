@@ -8,7 +8,6 @@ PROJECT_NUMBER = 1
 README_PATH = "README.md"
 
 COLUMNS = [
-    ("Ideas", "Ideas"),
     ("Todo", "Todo"),
     ("In Progress", "In Progress"),
     ("Done", "Done"),
