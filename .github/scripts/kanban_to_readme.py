@@ -95,10 +95,11 @@ def get_project_tasks():
 def render_kanban_md(tasks):
     counts = {col: len(tasks[col]) for col, _ in COLUMNS}
     max_items = 10
-    md = "| Ideas ({}) | Todo ({}) | In Progress ({}) | Done ({}) |\n".format(
-        counts["Ideas"], counts["Todo"], counts["In Progress"], counts["Done"]
-    )
-    md += "|---|---|---|---|\n"
+
+    headers = [f"{col} ({counts[col]})" for col, _ in COLUMNS]
+    md = "| " + " | ".join(headers) + " |\n"
+    md += "| " + " | ".join(["---"] * len(COLUMNS)) + " |\n"
+
     for i in range(max_items):
         row = []
         for col, _ in COLUMNS:
