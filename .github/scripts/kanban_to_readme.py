@@ -20,7 +20,7 @@ query($login: String!, $number: Int!) {
     projectV2(number: $number) {
       id
       title
-      items(first: 200) {
+      items(first: 100) {
         nodes {
           content {
             ... on Issue { title }
