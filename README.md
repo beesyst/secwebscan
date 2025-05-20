@@ -181,18 +181,18 @@ All parameters are set in `config.json`:
 ## 🗺️ To-Do
 
 <!--KANBAN_START-->
-| Todo (5) | In Progress (1) | Done (18) |
+| Todo (5) | In Progress (0) | Done (19) |
 | --- | --- | --- |
-| PDF reports | Auto-update Kanban board in README from GitHub Projects | Expansion of scan complexity levels |
-| Proxy integration (Tor/Chain) | &nbsp; | Scanner update check before run |
-| Integrate dig | &nbsp; | Reports from PostgreSQL (HTML, Terminal) |
-| Integrate nuclei | &nbsp; | Asynchronous plugin execution |
-| Multi-language support (RU/EN) | &nbsp; | Flexible configuration via config.json |
+| PDF reports | &nbsp; | Auto-update Kanban board in README from GitHub Projects |
+| Proxy integration (Tor/Chain) | &nbsp; | Expansion of scan complexity levels |
+| Integrate dig | &nbsp; | Scanner update check before run |
+| Integrate nuclei | &nbsp; | Reports from PostgreSQL (HTML, Terminal) |
+| Multi-language support (RU/EN) | &nbsp; | Asynchronous plugin execution |
+| &nbsp; | &nbsp; | Flexible configuration via config.json |
 | &nbsp; | &nbsp; | Log and report cleanup via config flags |
 | &nbsp; | &nbsp; | Static report structure with category grouping |
 | &nbsp; | &nbsp; | Light/dark theme support for HTML reports via config |
 | &nbsp; | &nbsp; | File/report permission control (chown) |
-| &nbsp; | &nbsp; | Auto-opening HTML report after generation |
 
 <!--KANBAN_END-->
 
