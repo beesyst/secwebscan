@@ -181,12 +181,12 @@ All parameters are set in `config.json`:
 ## 🗺️ To-Do
 
 <!--KANBAN_START-->
-| Todo (5) | In Progress (0) | Done (19) |
+| Todo (5) | In Progress (4) | Done (19) |
 | --- | --- | --- |
-| PDF reports | &nbsp; | Auto-update Kanban board in README from GitHub Projects |
-| Proxy integration (Tor/Chain) | &nbsp; | Expansion of scan complexity levels |
-| Integrate dig | &nbsp; | Scanner update check before run |
-| Integrate nuclei | &nbsp; | Reports from PostgreSQL (HTML, Terminal) |
+| PDF reports | Vulnerability severity classification | Auto-update Kanban board in README from GitHub Projects |
+| Proxy integration (Tor/Chain) | Summary of vulnerabilities by severity | Expansion of scan complexity levels |
+| Integrate dig | Add network target support to nmap plugin configuration | Scanner update check before run |
+| Integrate nuclei | Add require and enabled fields to Nmap | Reports from PostgreSQL (HTML, Terminal) |
 | Multi-language support (RU/EN) | &nbsp; | Asynchronous plugin execution |
 | &nbsp; | &nbsp; | Flexible configuration via config.json |
 | &nbsp; | &nbsp; | Log and report cleanup via config flags |
