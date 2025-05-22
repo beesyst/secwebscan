@@ -310,6 +310,8 @@ async def scan(config):
 
     if ip:
         for proto, proto_conf in level_config.get("ip", {}).items():
+            if not proto_conf.get("enabled", True):
+                continue
             if proto_conf.get("flags"):
                 ports = proto_conf.get("ports", [])
                 ports_str = f"-p {normalize_ports(ports)}" if ports else ""
@@ -337,6 +339,8 @@ async def scan(config):
 
     if domain:
         for proto, proto_conf in level_config.get("domain", {}).items():
+            if not proto_conf.get("enabled", True):
+                continue
             if proto_conf.get("flags"):
                 ports = proto_conf.get("ports", [])
                 ports_str = f"-p {normalize_ports(ports)}" if ports else ""
@@ -365,6 +369,38 @@ async def scan(config):
                     asyncio.to_thread(run_nmap, domain, f"domain_{proto}", full_args)
                 )
                 sources.append(f"domain_{proto}")
+
+    network = config.get("scan_config", {}).get("target_network")
+    if network:
+        for proto, proto_conf in level_config.get("network", {}).items():
+            if not proto_conf.get("enabled", True):
+                continue
+            if proto_conf.get("flags"):
+                ports = proto_conf.get("ports", [])
+                ports_str = f"-p {normalize_ports(ports)}" if ports else ""
+                scripts = proto_conf.get("scripts", [])
+                script_names = []
+                script_args = []
+                for s in scripts:
+                    if isinstance(s, str):
+                        script_names.append(s)
+                    elif isinstance(s, dict) and "name" in s:
+                        script_names.append(s["name"])
+                        if "args" in s and s["args"]:
+                            script_args.append(s["args"].replace('"', "'"))
+                script_str = (
+                    f'--script "{",".join(script_names)}"' if script_names else ""
+                )
+                args_str = (
+                    f'--script-args "{",".join(script_args)}"' if script_args else ""
+                )
+                full_args = (
+                    f"{proto_conf['flags']} {ports_str} {script_str} {args_str}".strip()
+                )
+                tasks.append(
+                    asyncio.to_thread(run_nmap, network, f"network_{proto}", full_args)
+                )
+                sources.append(f"network_{proto}")
 
     results = await asyncio.gather(*tasks)
     return [

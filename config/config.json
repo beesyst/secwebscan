@@ -11,6 +11,8 @@
   "scan_config": {
     "target_ip": "64.227.103.24",
     "target_domain": "honey.scanme.sh",
+    "target_network": "64.227.103.0/24",
+    "target_api": "https://api.honey.scanme.sh/openapi.json",
     "report_formats": ["terminal", "html"],
     "open_report": true,
     "clear_reports": true,
@@ -22,13 +24,13 @@
     {
       "name": "nmap",
       "enabled": true,
-      "category": "Network Security",
+      "category": "Network",
       "install": ["apt-get update", "apt-get install -y nmap"],
       "level": "easy"
     },
     {
       "name": "nikto",
-      "enabled": true,
+      "enabled": false,
       "category": "Application Security",
       "install": [
         "apt-get update",
