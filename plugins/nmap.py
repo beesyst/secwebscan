@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 
 from core.logger_plugin import setup_plugin_logger
+from core.severity import classify_severity
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.json")
@@ -193,6 +194,7 @@ def parse(xml_path: str, source_label: str = "unknown"):
                     "source": source_label,
                 }
 
+                data["severity"] = classify_severity(data)
                 results.append(data)
 
     except Exception as e:

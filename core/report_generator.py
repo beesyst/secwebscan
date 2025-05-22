@@ -284,6 +284,8 @@ def show_in_terminal(results, duration_map):
                     if k not in ["severity", "created_at", "plugin", "target", "data"]
                 )
             )
+            if "severity" not in all_keys:
+                all_keys.append("severity")
 
             column_order = None
             wide_fields = []
@@ -305,6 +307,10 @@ def show_in_terminal(results, duration_map):
                     [k for k in column_order if k in all_keys and k != "source"]
                 )
                 keys.extend([k for k in all_keys if k not in keys])
+                if "severity" not in keys:
+                    keys.append("severity")
+                else:
+                    keys.append("severity")
             else:
                 keys = []
                 if "source" in all_keys:

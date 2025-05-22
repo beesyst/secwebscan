@@ -122,7 +122,7 @@
         "sctp": {
           "ports": [3868, 9899],
           "flags": "-sY -sZ -Pn",
-          "scripts": ["sctp-init-chk"],
+          "scripts": [],
           "enabled": true
         },
         "icmp": {
@@ -162,7 +162,7 @@
         "sctp": {
           "ports": [3868, 9899],
           "flags": "-sY -sZ -Pn",
-          "scripts": ["sctp-init-chk"],
+          "scripts": [],
           "enabled": true
         },
         "icmp": {
@@ -205,7 +205,7 @@
         "sctp": {
           "ports": [3868, 9899],
           "flags": "-sY -sZ -Pn --max-retries 1",
-          "scripts": ["sctp-init-chk"],
+          "scripts": [],
           "enabled": true
         }
       }
@@ -250,7 +250,7 @@
         "sctp": {
           "ports": [3868, 9899],
           "flags": "-sY -sZ -Pn",
-          "scripts": ["sctp-init-chk", "sctp-cookie-echo"],
+          "scripts": ["sctp-cookie-echo"],
           "enabled": true
         },
         "icmp": {
@@ -305,7 +305,7 @@
         "sctp": {
           "ports": [3868, 9899],
           "flags": "-sY -sZ -Pn",
-          "scripts": ["sctp-init-chk", "sctp-cookie-echo"],
+          "scripts": ["sctp-cookie-echo"],
           "enabled": true
         },
         "icmp": {
@@ -349,7 +349,7 @@
         "sctp": {
           "ports": [3868, 9899],
           "flags": "-sY -sZ -Pn --max-retries 1",
-          "scripts": ["sctp-init-chk", "sctp-cookie-echo"],
+          "scripts": ["sctp-cookie-echo"],
           "enabled": true
         }
       }
@@ -414,7 +414,7 @@
         "sctp": {
           "ports": [1, 3868, 9899, 2905],
           "flags": "-sY -sZ -Pn",
-          "scripts": ["sctp-init-chk", "sctp-cookie-echo"],
+          "scripts": ["sctp-cookie-echo"],
           "enabled": true
         },
         "icmp": {
@@ -489,7 +489,7 @@
         "sctp": {
           "ports": [1, 3868, 9899, 2905],
           "flags": "-sY -sZ -Pn",
-          "scripts": ["sctp-init-chk", "sctp-cookie-echo"],
+          "scripts": ["sctp-cookie-echo"],
           "enabled": true
         },
         "icmp": {
@@ -533,7 +533,7 @@
         "sctp": {
           "ports": [1, 3868, 9899, 2905],
           "flags": "-sY -sZ -Pn --max-retries 1",
-          "scripts": ["sctp-init-chk", "sctp-cookie-echo"],
+          "scripts": ["sctp-cookie-echo"],
           "enabled": true
         }
       }
